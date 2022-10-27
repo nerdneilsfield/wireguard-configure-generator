@@ -1,26 +1,24 @@
 {
     "clients": [
         {
+            "dns1": "1.1.1.1",
+            "dns2": "114.114.114.114",
             "gen_global": true,
             "gen_local": true,
-            "ipv4_addr": "10.0.0.2",
-            "ipv6_addr": "2001:db8::2",
             "name": "my-clients",
             "port": 8080,
-            "dns1": "10.15.44.11",
-            "dns2": "114.114.114.114"
+            "vlan_ipv4_addr": "10.0.0.2"
         }
     ],
     "common": {
         "network_ipv4_addr": "10.0.0.0/24",
-        "network_ipv6_addr": "2001:db8::/32",
         "network_name": "my-network"
     },
     "server": {
         "interface": "en0",
         "ipv4_addr": "10.0.0.1",
-        "ipv6_addr": "2001:db8::1",
         "name": "my-server",
-        "port": 8080
+        "port": 8080,
+        "vlan_ipv4_addr": "114.114.11.11"
     }
 }
