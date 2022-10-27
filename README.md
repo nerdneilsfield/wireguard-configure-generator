@@ -2,7 +2,7 @@
 
 A very simple wireguard configure generator.
 
-Just one config json file, whole network wireguard configuration.
+Just one config json file, whole network wireguard configurated.
 
 
 ## Dependencies
