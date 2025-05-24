@@ -1,0 +1,29 @@
+*.pyc
+*.pyo
+*.o
+*.so
+*.a
+**build
+.vscode
+*.cxx
+__pycache__
+*.log
+*.log.*
+
+# ignore all files in the .vscode directory
+.vscode/
+
+# ignore all python temporary files
+*.py[co]
+
+# ignore all files in the .idea directory
+.idea/
+.venv/
+venv/
+env/
+
+__pycache__/
+
+.DS_Store
+
+.env
