@@ -1,188 +1,214 @@
-#!/usr/bin/env python3
 """
-WireGuard 路由优化器
-自动测量网络延迟并选择最优路径
+Route optimization for WireGuard mesh networks
 """
 
-import subprocess
-import time
-import json
-import statistics
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
-
-
-@dataclass
-class RouteMetric:
-    """路由度量信息"""
-    target: str
-    via: str
-    rtt_avg: float
-    rtt_std: float
-    packet_loss: float
-    bandwidth: Optional[float] = None
+import networkx as nx
+from typing import List, Dict, Any, Tuple, Optional
+from .logger import get_logger
 
 
 class RouteOptimizer:
-    """路由优化器"""
-    
-    def __init__(self, interface: str = "wg0"):
-        self.interface = interface
-        self.ping_count = 5
-        self.ping_timeout = 3
-    
-    def ping_test(self, target_ip: str, count: int = None) -> Tuple[float, float, float]:
+    """Route optimizer for WireGuard mesh networks"""
+
+    def __init__(self, nodes: List[Dict[str, Any]], peers: List[Dict[str, Any]]):
         """
-        执行 ping 测试
-        返回: (平均RTT, RTT标准差, 丢包率)
+        Initialize route optimizer.
+
+        Args:
+            nodes: List of node configurations
+            peers: List of peer connections
         """
-        count = count or self.ping_count
-        
+        self.logger = get_logger()
+        self.nodes = nodes
+        self.peers = peers
+        self.graph = self._build_graph()
+
+    def _build_graph(self) -> nx.Graph:
+        """Build network graph from nodes and peers"""
+        G = nx.Graph()
+
+        # Add nodes
+        for node in self.nodes:
+            G.add_node(node['name'], **node)
+
+        # Add edges with weights (latency/cost)
+        for peer in self.peers:
+            # Default weight is 1, can be customized based on endpoint performance
+            weight = peer.get('weight', 1)
+            G.add_edge(peer['from'], peer['to'], weight=weight)
+
+        return G
+
+    def find_optimal_path(self, source: str, target: str) -> Optional[List[str]]:
+        """
+        Find optimal path between two nodes.
+
+        Args:
+            source: Source node name
+            target: Target node name
+
+        Returns:
+            List of node names representing the optimal path
+        """
         try:
-            # Windows ping 命令
-            cmd = ["ping", "-n", str(count), "-w", str(self.ping_timeout * 1000), target_ip]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            
-            if result.returncode != 0:
-                return float('inf'), float('inf'), 100.0
-            
-            output = result.stdout
-            
-            # 解析 ping 结果
-            rtts = []
-            lines = output.split('\n')
-            
-            for line in lines:
-                if 'time=' in line or 'time<' in line:
-                    # 提取 RTT 值
-                    if 'time=' in line:
-                        rtt_str = line.split('time=')[1].split('ms')[0]
-                    else:  # time<1ms
-                        rtt_str = "0.5"  # 假设小于1ms的为0.5ms
-                    
-                    try:
-                        rtts.append(float(rtt_str))
-                    except ValueError:
-                        continue
-            
-            if not rtts:
-                return float('inf'), float('inf'), 100.0
-            
-            # 计算统计信息
-            avg_rtt = statistics.mean(rtts)
-            std_rtt = statistics.stdev(rtts) if len(rtts) > 1 else 0.0
-            loss_rate = max(0, (count - len(rtts)) / count * 100)
-            
-            return avg_rtt, std_rtt, loss_rate
-            
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
-            return float('inf'), float('inf'), 100.0
-    
-    def measure_routes(self, routes: Dict[str, List[str]]) -> Dict[str, List[RouteMetric]]:
+            path = nx.shortest_path(self.graph, source, target, weight='weight')
+            self.logger.debug(f"最优路径 {source} -> {target}: {' -> '.join(path)}")
+            return path
+        except nx.NetworkXNoPath:
+            self.logger.warning(f"无法找到路径: {source} -> {target}")
+            return None
+
+    def find_all_paths(self, source: str, target: str, max_length: int = 5) -> List[List[str]]:
         """
-        测量多条路由的性能
-        routes: {"target": ["via1", "via2", ...]}
+        Find all possible paths between two nodes.
+
+        Args:
+            source: Source node name
+            target: Target node name
+            max_length: Maximum path length
+
+        Returns:
+            List of paths (each path is a list of node names)
         """
-        results = {}
-        
-        for target, vias in routes.items():
-            target_results = []
-            
-            for via in vias:
-                print(f"Testing route to {target} via {via}...")
-                
-                # 这里需要根据实际情况调整IP地址映射
-                via_ip = self._get_node_ip(via)
-                if not via_ip:
-                    continue
-                
-                avg_rtt, std_rtt, loss = self.ping_test(via_ip)
-                
-                metric = RouteMetric(
-                    target=target,
-                    via=via,
-                    rtt_avg=avg_rtt,
-                    rtt_std=std_rtt,
-                    packet_loss=loss
-                )
-                
-                target_results.append(metric)
-                print(f"  RTT: {avg_rtt:.2f}±{std_rtt:.2f}ms, Loss: {loss:.1f}%")
-            
-            # 按性能排序（RTT越小越好，丢包率越小越好）
-            target_results.sort(key=lambda x: (x.packet_loss, x.rtt_avg))
-            results[target] = target_results
-        
-        return results
-    
-    def _get_node_ip(self, node_name: str) -> Optional[str]:
-        """获取节点的IP地址"""
-        # 这里应该从配置文件中读取节点IP映射
-        # 暂时硬编码一些示例
-        ip_map = {
-            'D': '10.96.0.1',
-            'H': '10.96.0.2',
-            'A': '10.96.1.2',
-            'B': '10.96.1.3',
-            'C': '10.96.1.4',
-            'E': '10.96.2.2',
-            'F': '10.96.2.3'
+        try:
+            paths = list(nx.all_simple_paths(self.graph, source, target, cutoff=max_length))
+            self.logger.debug(f"找到 {len(paths)} 条路径: {source} -> {target}")
+            return paths
+        except nx.NetworkXNoPath:
+            self.logger.warning(f"无法找到路径: {source} -> {target}")
+            return []
+
+    def calculate_path_cost(self, path: List[str]) -> float:
+        """
+        Calculate total cost of a path.
+
+        Args:
+            path: List of node names representing the path
+
+        Returns:
+            Total cost of the path
+        """
+        if len(path) < 2:
+            return 0.0
+
+        total_cost = 0.0
+        for i in range(len(path) - 1):
+            try:
+                edge_data = self.graph[path[i]][path[i + 1]]
+                total_cost += edge_data.get('weight', 1)
+            except KeyError:
+                # Edge doesn't exist
+                return float('inf')
+
+        return total_cost
+
+    def get_relay_nodes(self) -> List[str]:
+        """Get all relay nodes in the network"""
+        relay_nodes = []
+        for node in self.nodes:
+            if node.get('role') == 'relay':
+                relay_nodes.append(node['name'])
+        return relay_nodes
+
+    def optimize_mesh_routes(self) -> Dict[str, Dict[str, List[str]]]:
+        """
+        Optimize routes for all node pairs in the mesh.
+
+        Returns:
+            Dictionary mapping source -> target -> optimal_path
+        """
+        self.logger.info("开始优化网状网络路由")
+
+        routes = {}
+        node_names = [node['name'] for node in self.nodes]
+
+        for source in node_names:
+            routes[source] = {}
+            for target in node_names:
+                if source != target:
+                    optimal_path = self.find_optimal_path(source, target)
+                    if optimal_path:
+                        routes[source][target] = optimal_path
+
+        self.logger.info(f"路由优化完成，处理了 {len(node_names)} 个节点")
+        return routes
+
+    def suggest_relay_placement(self, max_relays: int = 3) -> List[str]:
+        """
+        Suggest optimal relay node placement.
+
+        Args:
+            max_relays: Maximum number of relay nodes to suggest
+
+        Returns:
+            List of suggested relay node names
+        """
+        self.logger.info("分析最优中继节点位置")
+
+        # Calculate betweenness centrality to find nodes that are on many shortest paths
+        centrality = nx.betweenness_centrality(self.graph, weight='weight')
+
+        # Sort nodes by centrality (excluding existing relays)
+        existing_relays = set(self.get_relay_nodes())
+        candidates = [(node, score) for node, score in centrality.items()
+                     if node not in existing_relays]
+        candidates.sort(key=lambda x: x[1], reverse=True)
+
+        # Return top candidates
+        suggestions = [node for node, _ in candidates[:max_relays]]
+
+        self.logger.info(f"建议的中继节点: {suggestions}")
+        return suggestions
+
+    def analyze_network_performance(self) -> Dict[str, Any]:
+        """
+        Analyze network performance metrics.
+
+        Returns:
+            Dictionary containing performance metrics
+        """
+        self.logger.info("分析网络性能指标")
+
+        metrics = {
+            'node_count': len(self.nodes),
+            'edge_count': len(self.peers),
+            'relay_count': len(self.get_relay_nodes()),
+            'average_path_length': 0.0,
+            'network_diameter': 0,
+            'clustering_coefficient': 0.0,
+            'connectivity': False
         }
-        return ip_map.get(node_name)
-    
-    def generate_optimized_routes(self, metrics: Dict[str, List[RouteMetric]]) -> Dict[str, str]:
-        """
-        基于测量结果生成优化的路由表
-        """
-        optimized = {}
-        
-        for target, route_list in metrics.items():
-            if route_list:
-                # 选择最优路由（丢包率最低，RTT最小）
-                best_route = route_list[0]
-                if best_route.packet_loss < 50:  # 只有丢包率小于50%才认为可用
-                    optimized[target] = best_route.via
-                    print(f"Best route to {target}: via {best_route.via} "
-                          f"(RTT: {best_route.rtt_avg:.2f}ms, Loss: {best_route.packet_loss:.1f}%)")
-        
-        return optimized
-    
-    def update_wireguard_routes(self, optimized_routes: Dict[str, str]):
-        """
-        更新 WireGuard 路由配置
-        这里只是示例，实际实现需要根据具体需求调整
-        """
-        print("\nOptimized routing recommendations:")
-        for target, via in optimized_routes.items():
-            print(f"  Route to {target} should use {via}")
-        
-        # 实际实现可能需要：
-        # 1. 修改 WireGuard 配置文件
-        # 2. 重新加载配置
-        # 3. 更新系统路由表
 
+        # 检查连通性，但要处理空图的情况
+        if len(self.graph.nodes()) == 0:
+            metrics['connectivity'] = True  # 空图被认为是连通的
+        else:
+            metrics['connectivity'] = nx.is_connected(self.graph)
 
-def main():
-    """主函数示例"""
-    optimizer = RouteOptimizer()
-    
-    # 定义要测试的路由
-    test_routes = {
-        'E': ['D', 'H'],  # A到E可以通过D或H
-        'F': ['D', 'H'],  # A到F可以通过D或H
-    }
-    
-    print("Starting route optimization...")
-    
-    # 测量路由性能
-    metrics = optimizer.measure_routes(test_routes)
-    
-    # 生成优化建议
-    optimized = optimizer.generate_optimized_routes(metrics)
-    
-    # 应用优化（这里只是打印建议）
-    optimizer.update_wireguard_routes(optimized)
+        if metrics['connectivity'] and len(self.graph.nodes()) > 1:
+            metrics['average_path_length'] = nx.average_shortest_path_length(self.graph, weight='weight')
+            metrics['network_diameter'] = nx.diameter(self.graph)
+            metrics['clustering_coefficient'] = nx.average_clustering(self.graph)
 
+        self.logger.info(f"网络性能分析完成: {metrics}")
+        return metrics
 
-if __name__ == "__main__":
-    main()
+    def detect_bottlenecks(self) -> List[Tuple[str, str]]:
+        """
+        Detect potential bottleneck edges in the network.
+
+        Returns:
+            List of edge tuples that are potential bottlenecks
+        """
+        self.logger.info("检测网络瓶颈")
+
+        # Calculate edge betweenness centrality
+        edge_centrality = nx.edge_betweenness_centrality(self.graph, weight='weight')
+
+        # Find edges with high centrality (potential bottlenecks)
+        threshold = 0.1  # Adjust as needed
+        bottlenecks = [(u, v) for (u, v), centrality in edge_centrality.items()
+                      if centrality > threshold]
+
+        self.logger.info(f"检测到 {len(bottlenecks)} 个潜在瓶颈")
+        return bottlenecks

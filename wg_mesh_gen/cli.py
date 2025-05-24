@@ -1,222 +1,339 @@
-import os
-import sys
+"""
+Command Line Interface for WireGuard Mesh Generator
+"""
+
 import click
-from wg_mesh_gen.loader import load_nodes, load_topology
-from wg_mesh_gen.utils import ensure_dir, load_json
-from wg_mesh_gen.render import render_all
-from wg_mesh_gen.storage import init_keystore, save_key, load_key
-from wg_mesh_gen.crypto import gen_private_key, gen_public_key, gen_psk
-from wg_mesh_gen.visualizer import visualize
-from wg_mesh_gen.smart_builder import build_smart_peer_configs, generate_route_script
+import os
+from pathlib import Path
+from .logger import setup_logging, get_logger
+from .loader import load_nodes, load_topology, validate_configuration
+from .builder import build_peer_configs
+from .render import ConfigRenderer
+from .visualizer import visualize
+from .storage import KeyStorage
+from .crypto import generate_keypair, generate_preshared_key
 
 
 @click.group()
-@click.option('--nodes-file', '-n', default=None,
-              help='Path to nodes.json configuration file')
-@click.option('--topo-file', '-t', default=None,
-              help='Path to topology.json configuration file')
-@click.option('--template-dir', '-T', default=None,
-              help='Jinja2 templates directory (default: project templates)')
-@click.option('--output-dir', '-o', default='out', help='Output directory for generated files')
-@click.option('--db', '-d', default='wg_keys.db', help='SQLite DB file name or URL')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+@click.option('--log-file', help='日志文件路径')
+@click.option('--nodes-file', '-n', default='examples/nodes.yaml',
+              help='节点配置文件路径')
+@click.option('--topo-file', '-t', default='examples/topology.yaml',
+              help='拓扑配置文件路径')
+@click.option('--output-dir', '-o', default='out',
+              help='输出目录')
 @click.pass_context
-def cli(ctx, nodes_file, topo_file, template_dir, output_dir, db):
+def cli(ctx, verbose, log_file, nodes_file, topo_file, output_dir):
+    """WireGuard Mesh Configuration Generator
+
+    生成WireGuard网状网络配置的工具
     """
-    WireGuard 配置生成器 CLI
-    """
-    # Determine project root directory
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    # Default config dir is project/config
-    config_dir = os.path.join(project_root, 'config')
-    # Default templates dir
-    default_template = os.path.join(os.path.dirname(__file__), 'templates')
+    # Setup logging
+    setup_logging(verbose=verbose, log_file=log_file)
 
-    # Build db_url
-    if db.startswith('sqlite://') or db.startswith('postgresql://'):
-        db_url = db
-    else:
-        # treat as filename under project root
-        db_path = os.path.abspath(db)
-        db_url = f'sqlite:///{db_path}'
-
-    # Resolve nodes and topo files
-    nodes_path = nodes_file or os.path.join(config_dir, 'nodes.json')
-    topo_path = topo_file or os.path.join(config_dir, 'topology.json')
-    tmpl_dir = template_dir or default_template
-
-    # Store in context
+    # Store common options in context
     ctx.ensure_object(dict)
-    ctx.obj.update({
-        'nodes_path': nodes_path,
-        'topo_path': topo_path,
-        'template_dir': tmpl_dir,
-        'output_dir': output_dir,
-        'db_url': db_url
-    })
+    ctx.obj['verbose'] = verbose
+    ctx.obj['nodes_file'] = nodes_file
+    ctx.obj['topo_file'] = topo_file
+    ctx.obj['output_dir'] = output_dir
 
 
-@cli.command('valid')
+@cli.command()
+@click.option('--auto-keys', is_flag=True, default=True,
+              help='自动生成缺失的密钥')
+@click.option('--db-path', default='wg_keys.db',
+              help='密钥数据库路径')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+@click.option('--log-file', help='日志文件路径')
+@click.option('--nodes-file', '-n', help='节点配置文件路径')
+@click.option('--topo-file', '-t', help='拓扑配置文件路径')
+@click.option('--output-dir', '-o', help='输出目录')
 @click.pass_context
-def validate(ctx):
-    """
-    校验 JSON 配置文件的基本结构
-    """
+def gen(ctx, auto_keys, db_path, verbose, log_file, nodes_file, topo_file, output_dir):
+    """生成WireGuard配置文件"""
+    # 使用子命令参数或回退到主命令参数
+    verbose = verbose or ctx.obj.get('verbose', False)
+    nodes_file = nodes_file or ctx.obj['nodes_file']
+    topo_file = topo_file or ctx.obj['topo_file']
+    output_dir = output_dir or ctx.obj['output_dir']
+
+    # 设置日志
+    if verbose or log_file:
+        setup_logging(verbose=verbose, log_file=log_file)
+
+    logger = get_logger()
+
+    logger.info("开始生成WireGuard配置")
+    logger.info(f"节点文件: {nodes_file}")
+    logger.info(f"拓扑文件: {topo_file}")
+    logger.info(f"输出目录: {output_dir}")
+
     try:
-        nodes = load_json(ctx.obj['nodes_path'])
-        peers = load_json(ctx.obj['topo_path'])
-        if 'nodes' not in nodes:
-            raise click.ClickException("Missing 'nodes' in nodes.json")
-        if 'peers' not in peers:
-            raise click.ClickException("Missing 'peers' in topology.json")
-        click.echo(click.style('Configuration validation passed.', fg='green'))
+        # Check if input files exist
+        if not os.path.exists(nodes_file):
+            logger.error(f"节点配置文件不存在: {nodes_file}")
+            raise click.ClickException(f"Nodes file not found: {nodes_file}")
+
+        if not os.path.exists(topo_file):
+            logger.error(f"拓扑配置文件不存在: {topo_file}")
+            raise click.ClickException(f"Topology file not found: {topo_file}")
+
+        # Build configurations
+        build_result = build_peer_configs(
+            nodes_file=nodes_file,
+            topology_file=topo_file,
+            output_dir=output_dir,
+            auto_generate_keys=auto_keys,
+            db_path=db_path
+        )
+
+        # Render configurations
+        renderer = ConfigRenderer()
+        renderer.render_all(build_result)
+
+        logger.info("WireGuard配置生成完成")
+        click.echo(f"配置文件已生成到: {output_dir}")
+
     except Exception as e:
-        click.echo(click.style(f'Validation error: {e}', fg='red'))
-        sys.exit(1)
+        logger.error(f"生成配置失败: {e}")
+        raise click.ClickException(str(e))
 
 
-@cli.command('gen')
-@click.option('--nodes-file', '-n', default=None, help='Override nodes file path')
-@click.option('--topo-file', '-t', default=None, help='Override topology file path')
-@click.option('--output-dir', '-o', default=None, help='Override output directory')
+@cli.command()
+@click.option('--layout', '-l', default='spring',
+              type=click.Choice(['spring', 'circular', 'shell', 'kamada_kawai']),
+              help='网络布局算法')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+@click.option('--log-file', help='日志文件路径')
+@click.option('--nodes-file', '-n', help='节点配置文件路径')
+@click.option('--topo-file', '-t', help='拓扑配置文件路径')
+@click.option('--output-dir', '-o', help='输出目录')
 @click.pass_context
-def generate(ctx, nodes_file, topo_file, output_dir):
-    """
-    根据配置生成 WireGuard 配置文件和启动脚本
-    """
-    # Use override files if provided, otherwise use context
-    nodes_path = nodes_file or ctx.obj['nodes_path']
-    topo_path = topo_file or ctx.obj['topo_path']
-    output_path = output_dir or ctx.obj['output_dir']
+def vis(ctx, layout, verbose, log_file, nodes_file, topo_file, output_dir):
+    """生成网络拓扑可视化图"""
+    # 使用子命令参数或回退到主命令参数
+    verbose = verbose or ctx.obj.get('verbose', False)
+    nodes_file = nodes_file or ctx.obj['nodes_file']
+    topo_file = topo_file or ctx.obj['topo_file']
+    output_dir = output_dir or ctx.obj['output_dir']
 
-    ensure_dir(output_path)
-    render_all(
-        nodes_path=nodes_path,
-        topology_path=topo_path,
-        template_dir=ctx.obj['template_dir'],
-        output_dir=output_path,
-        db_url=ctx.obj['db_url']
-    )
+    # 设置日志
+    if verbose or log_file:
+        setup_logging(verbose=verbose, log_file=log_file)
+
+    logger = get_logger()
+
+    output_path = os.path.join(output_dir, 'topology.png')
+
+    logger.info("开始生成网络拓扑可视化")
+    logger.info(f"布局算法: {layout}")
+
+    try:
+        # Check if input files exist
+        if not os.path.exists(nodes_file):
+            logger.error(f"节点配置文件不存在: {nodes_file}")
+            raise click.ClickException(f"Nodes file not found: {nodes_file}")
+
+        if not os.path.exists(topo_file):
+            logger.error(f"拓扑配置文件不存在: {topo_file}")
+            raise click.ClickException(f"Topology file not found: {topo_file}")
+
+        # Generate visualization
+        visualize(
+            nodes_path=nodes_file,
+            topology_path=topo_file,
+            output_path=output_path,
+            layout=layout
+        )
+
+        logger.info("网络拓扑可视化生成完成")
+        click.echo(f"拓扑图已保存到: {output_path}")
+
+    except Exception as e:
+        logger.error(f"生成可视化失败: {e}")
+        raise click.ClickException(str(e))
 
 
-@cli.command('update')
-@click.option('--force', '-f', is_flag=True, default=False, help='Force regenerate keys even if they exist')
-@click.option('--nodes-file', '-n', default=None, help='Override nodes file path')
+@cli.command()
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+@click.option('--log-file', help='日志文件路径')
+@click.option('--nodes-file', '-n', help='节点配置文件路径')
+@click.option('--topo-file', '-t', help='拓扑配置文件路径')
 @click.pass_context
-def update_keys(ctx, force, nodes_file):
-     """
-     为节点生成或更新 WireGuard 密钥对
-     """
-     nodes_path = nodes_file or ctx.obj['nodes_path']
-     nodes = load_nodes(nodes_path)
-     session = init_keystore(ctx.obj['db_url'])
-     for node in nodes:
-         name = node['name']
-         kp = load_key(session, name)
-         if kp and not force:
-             click.echo(f"KeyPair exists for {name}, skipping.")
-             continue
-         if kp and force:
-             click.echo(f"Force regenerating KeyPair for {name}.")
-         private_key = gen_private_key()
-         public_key = gen_public_key(private_key)
-         psk = gen_psk()
-         save_key(session, name, private_key, public_key, psk)
-         click.echo(click.style(f'Generated keys for {name}', fg='green'))
+def valid(ctx, verbose, log_file, nodes_file, topo_file):
+    """验证配置文件"""
+    # 使用子命令参数或回退到主命令参数
+    verbose = verbose or ctx.obj.get('verbose', False)
+    nodes_file = nodes_file or ctx.obj['nodes_file']
+    topo_file = topo_file or ctx.obj['topo_file']
+
+    # 设置日志
+    if verbose or log_file:
+        setup_logging(verbose=verbose, log_file=log_file)
+
+    logger = get_logger()
+
+    logger.info("开始验证配置文件")
+
+    try:
+        # Check if input files exist
+        if not os.path.exists(nodes_file):
+            logger.error(f"节点配置文件不存在: {nodes_file}")
+            raise click.ClickException(f"Nodes file not found: {nodes_file}")
+
+        if not os.path.exists(topo_file):
+            logger.error(f"拓扑配置文件不存在: {topo_file}")
+            raise click.ClickException(f"Topology file not found: {topo_file}")
+
+        # Load and validate configurations
+        nodes = load_nodes(nodes_file)
+        peers = load_topology(topo_file)
+
+        if validate_configuration(nodes, peers):
+            logger.info("配置文件验证通过")
+            click.echo("Configuration validation passed.")
+        else:
+            logger.error("配置文件验证失败")
+            raise click.ClickException("Configuration validation failed.")
+
+    except Exception as e:
+        logger.error(f"验证配置失败: {e}")
+        raise click.ClickException(str(e))
 
 
-@cli.command('smart-gen')
-@click.option('--nodes-file', '-n', default=None, help='Override nodes file path')
-@click.option('--topo-file', '-t', default=None, help='Override topology file path')
-@click.option('--output-dir', '-o', default=None, help='Override output directory')
-@click.option('--enable-multipath/--disable-multipath', default=True, help='Enable multipath routing')
-@click.pass_context
-def smart_generate(ctx, nodes_file, topo_file, output_dir, enable_multipath):
-    """
-    智能生成 WireGuard 配置，支持多路径和路由优化
-    """
-    from jinja2 import Environment, FileSystemLoader
-    from tqdm import tqdm
-
-    # Use override files if provided, otherwise use context
-    nodes_path = nodes_file or ctx.obj['nodes_path']
-    topo_path = topo_file or ctx.obj['topo_path']
-    output_path = output_dir or ctx.obj['output_dir']
-
-    ensure_dir(output_path)
-
-    # Load nodes and build smart peer configs
-    nodes = load_nodes(nodes_path)
-    peer_configs = build_smart_peer_configs(nodes_path, topo_path, ctx.obj['db_url'], enable_multipath)
-
-    # Setup Jinja2 environment
-    env = Environment(loader=FileSystemLoader(ctx.obj['template_dir']), trim_blocks=True, lstrip_blocks=True)
-    iface_t = env.get_template('interface.conf.j2')
-    script_t = env.get_template('wg-quick.sh.j2')
-
-    session = init_keystore(ctx.obj['db_url'])
-
-    for node in tqdm(nodes, desc='Generating smart configs'):
-        name = node['name']
-
-        # Get or generate keypair
-        kp = load_key(session, name)
-        if not kp:
-            private_key = gen_private_key()
-            public_key = gen_public_key(private_key)
-            psk = gen_psk()
-            save_key(session, name, private_key, public_key, psk)
-            kp = load_key(session, name)
-
-        # Render .conf
-        conf = iface_t.render(node=node, key={'private_key': kp.private_key}, peers=peer_configs.get(name, []))
-        with open(os.path.join(output_path, f"{name}.conf"), 'w') as f:
-            f.write(conf)
-
-        # Render .sh
-        script = script_t.render(node=node, out_dir=output_path)
-        sh_path = os.path.join(output_path, f"{name}.sh")
-        with open(sh_path, 'w') as f:
-            f.write(script)
-        os.chmod(sh_path, 0o755)
-
-        # Generate route optimization script
-        if enable_multipath:
-            route_script = generate_route_script(name, peer_configs.get(name, []))
-            route_path = os.path.join(output_path, f"{name}_route_optimizer.sh")
-            with open(route_path, 'w') as f:
-                f.write(route_script)
-            os.chmod(route_path, 0o755)
-
-    click.echo(click.style('Smart configs generated with route optimization!', fg='green'))
+@cli.group()
+def keys():
+    """密钥管理命令"""
+    pass
 
 
-@cli.command('vis')
-@click.option('--layout', '-l', default='spring', help='Graph layout: spring, shell, circular, kamada_kawai')
-@click.option('--output-image', '-i', default=None, help='Output file path (default: output_dir/topology.png)')
-@click.option('--nodes-file', '-n', default=None, help='Override nodes file path')
-@click.option('--topo-file', '-t', default=None, help='Override topology file path')
-@click.pass_context
-def visualize_cmd(ctx, layout, output_image, nodes_file, topo_file):
-    """
-    绘制并输出网络拓扑可视化图
-    """
-    # Use override files if provided, otherwise use context
-    nodes_path = nodes_file or ctx.obj['nodes_path']
-    topo_path = topo_file or ctx.obj['topo_path']
+@keys.command()
+@click.argument('node_name')
+@click.option('--db-path', default='wg_keys.db', help='密钥数据库路径')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+@click.option('--log-file', help='日志文件路径')
+def generate(node_name, db_path, verbose, log_file):
+    """为指定节点生成密钥对"""
+    # 设置日志
+    if verbose or log_file:
+        setup_logging(verbose=verbose, log_file=log_file)
 
-    # Set default output image if not provided
-    if output_image is None:
-        output_image = os.path.join(ctx.obj['output_dir'], 'topology.png')
+    logger = get_logger()
+    logger.info(f"为节点 {node_name} 生成密钥对")
 
-    output_dir = os.path.dirname(output_image)
-    ensure_dir(output_dir)
+    try:
+        # Generate keys
+        private_key, public_key = generate_keypair()
+        psk = generate_preshared_key()
 
-    visualize(nodes_path=nodes_path,
-              topology_path=topo_path,
-              output_path=output_image,
-              layout=layout)
-    click.echo(click.style(f'Topology image saved to {output_image}', fg='green'))
+        # Store keys
+        with KeyStorage(db_path) as key_storage:
+            key_storage.store_keypair(node_name, private_key, public_key, psk)
+
+        logger.info(f"密钥对生成完成: {node_name}")
+        click.echo(f"Keys generated for node: {node_name}")
+        click.echo(f"Public key: {public_key}")
+
+    except Exception as e:
+        logger.error(f"生成密钥失败: {e}")
+        raise click.ClickException(str(e))
+
+
+@keys.command()
+@click.option('--db-path', default='wg_keys.db', help='密钥数据库路径')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+@click.option('--log-file', help='日志文件路径')
+def list(db_path, verbose, log_file):
+    """列出所有存储的密钥"""
+    # 设置日志
+    if verbose or log_file:
+        setup_logging(verbose=verbose, log_file=log_file)
+
+    logger = get_logger()
+
+    try:
+        with KeyStorage(db_path) as key_storage:
+            stored_keys = key_storage.list_keys()
+
+            if stored_keys:
+                click.echo("Stored keys:")
+                for key_name in stored_keys:
+                    click.echo(f"  - {key_name}")
+            else:
+                click.echo("No keys stored.")
+
+    except Exception as e:
+        logger.error(f"列出密钥失败: {e}")
+        raise click.ClickException(str(e))
+
+
+@keys.command()
+@click.argument('node_name')
+@click.option('--db-path', default='wg_keys.db', help='密钥数据库路径')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+@click.option('--log-file', help='日志文件路径')
+def show(node_name, db_path, verbose, log_file):
+    """显示指定节点的密钥信息"""
+    # 设置日志
+    if verbose or log_file:
+        setup_logging(verbose=verbose, log_file=log_file)
+
+    logger = get_logger()
+
+    try:
+        with KeyStorage(db_path) as key_storage:
+            keys = key_storage.get_keypair(node_name)
+
+            if keys:
+                from .utils import mask_sensitive_info
+                click.echo(f"Keys for node: {node_name}")
+                click.echo(f"Public key: {keys['public_key']}")
+                click.echo(f"Private key: {mask_sensitive_info(keys['private_key'])}")
+                if keys['psk']:
+                    click.echo(f"PSK: {mask_sensitive_info(keys['psk'])}")
+            else:
+                click.echo(f"No keys found for node: {node_name}")
+
+    except Exception as e:
+        logger.error(f"显示密钥失败: {e}")
+        raise click.ClickException(str(e))
+
+
+@keys.command()
+@click.argument('node_name')
+@click.option('--db-path', default='wg_keys.db', help='密钥数据库路径')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+@click.option('--log-file', help='日志文件路径')
+@click.confirmation_option(prompt='Are you sure you want to delete this key?')
+def delete(node_name, db_path, verbose, log_file):
+    """删除指定节点的密钥"""
+    # 设置日志
+    if verbose or log_file:
+        setup_logging(verbose=verbose, log_file=log_file)
+
+    logger = get_logger()
+
+    try:
+        with KeyStorage(db_path) as key_storage:
+            success = key_storage.delete_keypair(node_name)
+
+            if success:
+                logger.info(f"密钥已删除: {node_name}")
+                click.echo(f"Keys deleted for node: {node_name}")
+            else:
+                click.echo(f"No keys found for node: {node_name}")
+
+    except Exception as e:
+        logger.error(f"删除密钥失败: {e}")
+        raise click.ClickException(str(e))
+
+
+def main():
+    """Main entry point"""
+    cli()
 
 
 if __name__ == '__main__':
-    cli()
+    main()

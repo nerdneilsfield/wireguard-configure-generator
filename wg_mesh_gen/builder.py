@@ -1,58 +1,153 @@
-# builder.py
-from typing import List, Dict, Any
-from wg_mesh_gen.loader import load_nodes, load_topology
-from wg_mesh_gen.storage import init_keystore, load_key, save_key
-from wg_mesh_gen.crypto import gen_keypair
+"""
+WireGuard configuration builder
+"""
 
-def build_peer_configs(nodes_path: str,
-                       topology_path: str,
-                       db_url: str = 'sqlite:///wg_keys.db') -> Dict[str, List[Dict[str, Any]]]:
+from typing import List, Dict, Any, Optional
+from .loader import load_nodes, load_topology, validate_configuration
+from .crypto import generate_keypair, generate_preshared_key
+from .storage import KeyStorage
+from .logger import get_logger
+from .utils import mask_sensitive_info
+
+
+def build_peer_configs(nodes_file: str,
+                      topology_file: str,
+                      output_dir: str = "out",
+                      auto_generate_keys: bool = True,
+                      db_path: str = "wg_keys.db") -> Dict[str, Any]:
     """
-    Construct peer configurations mapping each node to its list of peers.
-    Uses 'endpoint' field in topology to choose the correct endpoint by name.
+    Build WireGuard peer configurations.
+
+    Args:
+        nodes_file: Path to nodes configuration file
+        topology_file: Path to topology configuration file
+        output_dir: Output directory for configuration files
+        auto_generate_keys: Whether to auto-generate missing keys
+        db_path: Path to key storage database
+
+    Returns:
+        Dictionary containing build results
     """
-    # Load raw configs
-    nodes = load_nodes(nodes_path)
-    peers = load_topology(topology_path)
-    session = init_keystore(db_url)
+    logger = get_logger()
+    logger.info("开始构建WireGuard配置")
 
-    # Build lookup for nodes and keys
-    node_map = {n['name']: n for n in nodes}
-    key_map = {}
-    for name in node_map:
-        kp = load_key(session, name)
-        if not kp:
-            # Auto-generate keypair if missing
-            private, public, psk = gen_keypair()
-            save_key(session, name, private, public, psk)
-            kp = load_key(session, name)
-            print(f"Auto-generated keys for {name}")
-        key_map[name] = kp
+    # Load configurations
+    nodes = load_nodes(nodes_file)
+    peers = load_topology(topology_file)
 
-    # Prepare container
-    peer_configs: Dict[str, List[Dict[str, Any]]] = {n: [] for n in node_map}
+    # Validate configuration
+    if not validate_configuration(nodes, peers):
+        raise ValueError("配置验证失败")
 
-    # Iterate topology
-    for rel in peers:
-        src = rel['from']
-        dst = rel['to']
-        ep_name = rel['endpoint']
-        allowed_ips = rel['allowed_ips']
+    # Initialize key storage with context manager
+    with KeyStorage(db_path) as key_storage:
+        # Generate or load keys for all nodes
+        for node in nodes:
+            node_name = node['name']
 
-        # Find dst endpoint entry by name
-        dst_node = node_map[dst]
-        ep_entry = next((e for e in dst_node['endpoints'] if e['name']==ep_name), None)
-        if not ep_entry:
-            raise ValueError(f"Endpoint '{ep_name}' not found for node '{dst}'")
+            # Check if keys already exist
+            existing_keys = key_storage.get_keypair(node_name)
 
-        peer_configs[src].append({
-            'peer_name': dst,
-            'endpoint_name': ep_name,
-            'public_key': key_map[dst].public_key,
-            'psk': key_map[dst].psk,
-            'endpoint': ep_entry['endpoint'],
-            'allowed_ips': allowed_ips,
-            'keepalive': rel.get('keepalive', 25)
-        })
+            if existing_keys:
+                logger.debug(f"使用已存在的密钥对: {node_name}")
+                node['private_key'] = existing_keys['private_key']
+                node['public_key'] = existing_keys['public_key']
+                node['psk'] = existing_keys.get('psk')
+            elif auto_generate_keys:
+                logger.info(f"为节点 {node_name} 生成新密钥对")
+                private_key, public_key = generate_keypair()
+                psk = generate_preshared_key()
 
-    return peer_configs
+                # Store keys
+                key_storage.store_keypair(node_name, private_key, public_key, psk)
+
+                node['private_key'] = private_key
+                node['public_key'] = public_key
+                node['psk'] = psk
+
+                logger.debug(f"节点 {node_name} 密钥生成完成")
+                logger.debug(f"  公钥: {mask_sensitive_info(public_key)}")
+            else:
+                logger.error(f"节点 {node_name} 缺少密钥且未启用自动生成")
+                raise ValueError(f"Node {node_name} missing keys and auto-generation disabled")
+
+        # Build peer configurations
+        configs = {}
+
+        for node in nodes:
+            node_name = node['name']
+            config = _build_node_config(node, nodes, peers)
+            configs[node_name] = config
+
+            logger.debug(f"节点 {node_name} 配置构建完成")
+
+        logger.info(f"成功构建 {len(configs)} 个节点配置")
+
+        return {
+            'configs': configs,
+            'nodes': nodes,
+            'peers': peers,
+            'output_dir': output_dir
+        }
+
+
+def _build_node_config(node: Dict[str, Any],
+                      all_nodes: List[Dict[str, Any]],
+                      peers: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Build configuration for a single node.
+
+    Args:
+        node: Node configuration
+        all_nodes: All node configurations
+        peers: All peer connections
+
+    Returns:
+        Node configuration with peer information
+    """
+    node_name = node['name']
+
+    # Create node lookup
+    node_lookup = {n['name']: n for n in all_nodes}
+
+    # Find all peers for this node
+    node_peers = []
+
+    for peer in peers:
+        if peer['from'] == node_name:
+            # This node connects to peer['to']
+            target_node = node_lookup[peer['to']]
+            peer_config = {
+                'name': target_node['name'],
+                'public_key': target_node['public_key'],
+                'endpoint': peer.get('endpoint'),
+                'allowed_ips': peer.get('allowed_ips', []),
+                'persistent_keepalive': peer.get('persistent_keepalive')
+            }
+            node_peers.append(peer_config)
+
+        elif peer['to'] == node_name:
+            # peer['from'] connects to this node
+            source_node = node_lookup[peer['from']]
+            peer_config = {
+                'name': source_node['name'],
+                'public_key': source_node['public_key'],
+                'endpoint': None,  # Incoming connection
+                'allowed_ips': peer.get('allowed_ips', []),
+                'persistent_keepalive': peer.get('persistent_keepalive')
+            }
+            node_peers.append(peer_config)
+
+    # Build final configuration
+    config = {
+        'interface': {
+            'private_key': node['private_key'],
+            'address': node.get('wireguard_ip'),
+            'listen_port': node.get('listen_port'),
+            'dns': node.get('dns'),
+            'mtu': node.get('mtu')
+        },
+        'peers': node_peers
+    }
+
+    return config

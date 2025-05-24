@@ -1,0 +1,139 @@
+# WireGuard 节点配置文件 (YAML格式)
+# 支持注释，便于理解和维护
+
+nodes:
+  # 客户端节点 A - 组内mesh网络成员
+  - name: A
+    role: client
+    wireguard_ip: 10.96.0.2
+    local_ips:
+      - 192.168.1.10
+    endpoints:
+      # 组内直连端点 - 用于与同组节点B、C通信
+      - name: group
+        allowed_peers:
+          - B
+          - C
+        endpoint: 192.168.1.10:51820
+      # 中继端点 - 用于通过中继节点D、H访问其他网络
+      - name: relay
+        allowed_peers:
+          - D
+          - H
+        endpoint: 203.0.113.10:51821
+
+  # 客户端节点 B - 组内mesh网络成员
+  - name: B
+    role: client
+    wireguard_ip: 10.96.0.3
+    local_ips:
+      - 192.168.1.11
+    endpoints:
+      - name: group
+        allowed_peers:
+          - A
+          - C
+        endpoint: 192.168.1.11:51820
+      - name: relay
+        allowed_peers:
+          - D
+          - H
+        endpoint: 203.0.113.11:51821
+
+  # 客户端节点 C - 组内mesh网络成员
+  - name: C
+    role: client
+    wireguard_ip: 10.96.0.4
+    local_ips:
+      - 192.168.1.12
+    endpoints:
+      - name: group
+        allowed_peers:
+          - A
+          - B
+        endpoint: 192.168.1.12:51820
+      - name: relay
+        allowed_peers:
+          - D
+          - H
+        endpoint: 203.0.113.12:51821
+
+  # 客户端节点 E - 另一组mesh网络成员
+  - name: E
+    role: client
+    wireguard_ip: 10.96.4.2
+    local_ips:
+      - 10.0.0.2
+    endpoints:
+      # 组内直连 - 与节点F通信
+      - name: group
+        allowed_peers:
+          - F
+        endpoint: 10.0.0.2:51820
+      # 对等连接 - 通过中继访问其他网络
+      - name: peers
+        allowed_peers:
+          - D
+          - H
+        endpoint: 198.51.100.2:51821
+
+  # 客户端节点 F - 另一组mesh网络成员
+  - name: F
+    role: client
+    wireguard_ip: 10.96.4.3
+    local_ips:
+      - 10.0.0.3
+    endpoints:
+      - name: group
+        allowed_peers:
+          - E
+        endpoint: 10.0.0.3:51820
+      - name: peers
+        allowed_peers:
+          - D
+          - H
+        endpoint: 198.51.100.3:51821
+
+  # 中继节点 D - 主要中继服务器
+  - name: D
+    role: relay
+    wireguard_ip: 10.96.0.1
+    local_ips:
+      - 203.0.113.5
+    endpoints:
+      # 客户端连接端点 - 接受A、B、C的连接
+      - name: clients
+        allowed_peers:
+          - A
+          - B
+          - C
+        endpoint: 203.0.113.5:51820
+      # 对等连接端点 - 与E、F、H通信
+      - name: peers
+        allowed_peers:
+          - E
+          - F
+          - H
+        endpoint: 203.0.113.5:51821
+
+  # 中继节点 H - 备用中继服务器
+  - name: H
+    role: relay
+    wireguard_ip: 10.96.4.1
+    local_ips:
+      - 198.51.100.10
+    endpoints:
+      # 客户端连接端点 - 接受A、B、C的连接
+      - name: clients
+        allowed_peers:
+          - A
+          - B
+          - C
+        endpoint: 198.51.100.10:51820
+      # 对等连接端点 - 与E、F、D通信
+      - name: peers
+        allowed_peers:
+          - E
+          - F
+          - D
+        endpoint: 198.51.100.10:51821

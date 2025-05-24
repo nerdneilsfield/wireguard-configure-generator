@@ -1,40 +1,77 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Nodes Configuration",
+  "title": "WireGuard Nodes Configuration",
+  "description": "Schema for WireGuard mesh network nodes configuration",
   "type": "object",
   "properties": {
     "nodes": {
       "type": "array",
+      "description": "List of WireGuard nodes",
       "items": {
         "type": "object",
         "properties": {
-          "name": { "type": "string" },
-          "role": { "type": "string", "enum": ["client", "relay"] },
-          "wireguard_ip": { "type": "string", "format": "ipv4" },
-          "local_ips": {
-            "type": "array",
-            "items": { "type": "string", "format": "ipv4" },
-            "minItems": 1
+          "name": {
+            "type": "string",
+            "description": "Unique name for the node",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "role": {
+            "type": "string",
+            "description": "Role of the node in the mesh network",
+            "enum": ["client", "relay", "server"]
+          },
+          "wireguard_ip": {
+            "type": "string",
+            "description": "WireGuard IP address with CIDR notation",
+            "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"
+          },
+          "listen_port": {
+            "type": "integer",
+            "description": "UDP port for WireGuard to listen on",
+            "minimum": 1,
+            "maximum": 65535
           },
           "endpoints": {
             "type": "array",
+            "description": "List of public endpoints for this node",
             "items": {
-              "type": "object",
-              "properties": {
-                "name": { "type": "string" },
-                "allowed_peers": {
-                  "type": "array",
-                  "items": { "type": "string" }
-                },
-                "endpoint": { "type": "string", "pattern": ".+:\\d+" }
-              },
-              "required": ["name", "allowed_peers", "endpoint"]
+              "type": "string",
+              "description": "Endpoint in format host:port",
+              "pattern": "^[^:]+:[0-9]+$"
             }
+          },
+          "dns": {
+            "type": "array",
+            "description": "DNS servers for this node",
+            "items": {
+              "type": "string",
+              "format": "ipv4"
+            }
+          },
+          "mtu": {
+            "type": "integer",
+            "description": "Maximum Transmission Unit",
+            "minimum": 576,
+            "maximum": 9000
+          },
+          "private_key": {
+            "type": "string",
+            "description": "WireGuard private key (base64 encoded)"
+          },
+          "public_key": {
+            "type": "string",
+            "description": "WireGuard public key (base64 encoded)"
+          },
+          "psk": {
+            "type": "string",
+            "description": "Pre-shared key (base64 encoded)"
           }
         },
-        "required": ["name", "role", "wireguard_ip", "endpoints"]
+        "required": ["name", "role", "wireguard_ip"],
+        "additionalProperties": false
       }
     }
   },
-  "required": ["nodes"]
+  "required": ["nodes"],
+  "additionalProperties": false
 }

@@ -1,0 +1,115 @@
+# WireGuard 拓扑配置文件 (YAML格式)
+# 定义节点间的连接关系和路由规则
+
+peers:
+  # 组内mesh连接 - A、B、C之间的直接连接
+  # 这些连接使用"group"端点，实现组内全连接mesh网络
+  - from: A
+    to: B
+    endpoint: group
+    allowed_ips:
+      - 10.96.0.3/32  # 允许访问节点B的WireGuard IP
+
+  - from: A
+    to: C
+    endpoint: group
+    allowed_ips:
+      - 10.96.0.4/32  # 允许访问节点C的WireGuard IP
+
+  - from: B
+    to: C
+    endpoint: group
+    allowed_ips:
+      - 10.96.0.4/32
+
+  - from: B
+    to: A
+    endpoint: group
+    allowed_ips:
+      - 10.96.0.2/32
+
+  - from: C
+    to: A
+    endpoint: group
+    allowed_ips:
+      - 10.96.0.2/32
+
+  - from: C
+    to: B
+    endpoint: group
+    allowed_ips:
+      - 10.96.0.3/32
+
+  # 另一组mesh连接 - E、F之间的直接连接
+  - from: E
+    to: F
+    endpoint: group
+    allowed_ips:
+      - 10.96.4.3/32
+
+  - from: F
+    to: E
+    endpoint: group
+    allowed_ips:
+      - 10.96.4.2/32
+
+  # 中继连接 - 客户端通过中继节点访问其他网络
+  # 这些连接允许跨组通信和网络互联
+
+  # A、B、C 到主中继 D 的连接
+  - from: A
+    to: D
+    endpoint: clients    # A使用clients端点连接到D
+    allowed_ips:
+      - 10.96.0.0/22     # 允许访问整个WireGuard网络
+
+  - from: B
+    to: D
+    endpoint: clients    # B使用clients端点连接到D
+    allowed_ips:
+      - 10.96.0.0/22
+
+  - from: C
+    to: D
+    endpoint: clients
+    allowed_ips:
+      - 10.96.0.0/22
+
+  # E、F 到中继 D 的连接
+  - from: E
+    to: D
+    endpoint: peers      # E使用peers端点连接到D
+    allowed_ips:
+      - 10.96.0.0/22
+
+  - from: F
+    to: D
+    endpoint: peers
+    allowed_ips:
+      - 10.96.0.0/22
+
+  # 备用中继连接 - 通过H节点提供冗余路径
+  - from: A
+    to: H
+    endpoint: clients    # A也可以通过H中继
+    allowed_ips:
+      - 10.96.0.0/22
+
+  - from: E
+    to: H
+    endpoint: peers      # E也可以通过H中继
+    allowed_ips:
+      - 10.96.0.0/22
+
+  # 中继节点间的连接 - D和H之间的互联
+  - from: D
+    to: H
+    endpoint: peers
+    allowed_ips:
+      - 10.96.4.1/32     # D访问H的WireGuard IP
+
+  - from: H
+    to: D
+    endpoint: clients    # H使用clients端点连接到D
+    allowed_ips:
+      - 10.96.0.1/32     # H访问D的WireGuard IP

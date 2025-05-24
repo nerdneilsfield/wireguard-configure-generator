@@ -23,6 +23,7 @@ venv/
 env/
 
 __pycache__/
+.pytest_cache/
 
 .DS_Store
 
@@ -32,3 +33,5 @@ out*/
 *.svg
 *.png
 *.db
+.coverage
+nul

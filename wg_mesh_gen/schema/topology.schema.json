@@ -1,24 +1,51 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Topology Configuration",
+  "title": "WireGuard Topology Configuration",
+  "description": "Schema for WireGuard mesh network topology configuration",
   "type": "object",
   "properties": {
     "peers": {
       "type": "array",
+      "description": "List of peer connections",
       "items": {
         "type": "object",
         "properties": {
-          "from": { "type": "string" },
-          "to": { "type": "string" },
-          "endpoint": { "type": "string" },
+          "from": {
+            "type": "string",
+            "description": "Source node name",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "to": {
+            "type": "string",
+            "description": "Target node name",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Public endpoint for the target node",
+            "pattern": "^[^:]+:[0-9]+$"
+          },
           "allowed_ips": {
             "type": "array",
-            "items": { "type": "string" }
+            "description": "List of allowed IP ranges",
+            "items": {
+              "type": "string",
+              "description": "IP address or CIDR range",
+              "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?:/[0-9]{1,2})?$"
+            }
+          },
+          "persistent_keepalive": {
+            "type": "integer",
+            "description": "Persistent keepalive interval in seconds",
+            "minimum": 0,
+            "maximum": 65535
           }
         },
-        "required": ["from", "to", "endpoint", "allowed_ips"]
+        "required": ["from", "to"],
+        "additionalProperties": false
       }
     }
   },
-  "required": ["peers"]
+  "required": ["peers"],
+  "additionalProperties": false
 }
