@@ -1,0 +1,25 @@
+{
+  "peers": [
+    { "from":"A","to":"B","endpoint":"group","allowed_ips":["10.96.0.3/32"] },
+    { "from":"A","to":"C","endpoint":"group","allowed_ips":["10.96.0.4/32"] },
+    { "from":"B","to":"C","endpoint":"group","allowed_ips":["10.96.0.4/32"] },
+    { "from":"B","to":"A","endpoint":"group","allowed_ips":["10.96.0.2/32"] },
+    { "from":"C","to":"A","endpoint":"group","allowed_ips":["10.96.0.2/32"] },
+    { "from":"C","to":"B","endpoint":"group","allowed_ips":["10.96.0.3/32"] },
+
+    { "from":"E","to":"F","endpoint":"group","allowed_ips":["10.96.4.3/32"] },
+    { "from":"F","to":"E","endpoint":"group","allowed_ips":["10.96.4.2/32"] },
+
+    { "from":"A","to":"D","endpoint":"relay","allowed_ips":["10.96.0.0/22"] },
+    { "from":"B","to":"D","endpoint":"clients","allowed_ips":["10.96.0.0/22"] },
+    { "from":"C","to":"D","endpoint":"clients","allowed_ips":["10.96.0.0/22"] },
+    { "from":"E","to":"D","endpoint":"peers","allowed_ips":["10.96.0.0/22"] },
+    { "from":"F","to":"D","endpoint":"peers","allowed_ips":["10.96.0.0/22"] },
+
+    { "from":"A","to":"H","endpoint":"relay","allowed_ips":["10.96.0.0/22"] },
+    { "from":"E","to":"H","endpoint":"peers","allowed_ips":["10.96.0.0/22"] },
+
+    { "from":"D","to":"H","endpoint":"peers","allowed_ips":["10.96.4.1/32"] },
+    { "from":"H","to":"D","endpoint":"clients","allowed_ips":["10.96.0.1/32"] }
+  ]
+}

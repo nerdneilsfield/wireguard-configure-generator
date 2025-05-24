@@ -1,0 +1,30 @@
+{
+  "peers": [
+    { "from":"A", "to":"B", "endpoint":"group", "allowed_ips":["10.96.1.3/32"] },
+    { "from":"A", "to":"C", "endpoint":"group", "allowed_ips":["10.96.1.4/32"] },
+    { "from":"B", "to":"A", "endpoint":"group", "allowed_ips":["10.96.1.2/32"] },
+    { "from":"B", "to":"C", "endpoint":"group", "allowed_ips":["10.96.1.4/32"] },
+    { "from":"C", "to":"A", "endpoint":"group", "allowed_ips":["10.96.1.2/32"] },
+    { "from":"C", "to":"B", "endpoint":"group", "allowed_ips":["10.96.1.3/32"] },
+
+    { "from":"E", "to":"F", "endpoint":"group", "allowed_ips":["10.96.2.3/32"] },
+    { "from":"F", "to":"E", "endpoint":"group", "allowed_ips":["10.96.2.2/32"] },
+
+    { "from":"A", "to":"D", "endpoint":"relay", "allowed_ips":["10.96.0.1/32", "10.96.2.0/24"] },
+    { "from":"B", "to":"D", "endpoint":"relay", "allowed_ips":["10.96.0.1/32", "10.96.2.0/24"] },
+    { "from":"C", "to":"D", "endpoint":"relay", "allowed_ips":["10.96.0.1/32", "10.96.2.0/24"] },
+
+    { "from":"E", "to":"D", "endpoint":"relay", "allowed_ips":["10.96.0.1/32", "10.96.1.0/24"] },
+    { "from":"F", "to":"D", "endpoint":"relay", "allowed_ips":["10.96.0.1/32", "10.96.1.0/24"] },
+
+    { "from":"A", "to":"H", "endpoint":"relay", "allowed_ips":["10.96.0.2/32", "10.96.2.0/24"] },
+    { "from":"B", "to":"H", "endpoint":"relay", "allowed_ips":["10.96.0.2/32", "10.96.2.0/24"] },
+    { "from":"C", "to":"H", "endpoint":"relay", "allowed_ips":["10.96.0.2/32", "10.96.2.0/24"] },
+
+    { "from":"E", "to":"H", "endpoint":"relay", "allowed_ips":["10.96.0.2/32", "10.96.1.0/24"] },
+    { "from":"F", "to":"H", "endpoint":"relay", "allowed_ips":["10.96.0.2/32", "10.96.1.0/24"] },
+
+    { "from":"D", "to":"H", "endpoint":"relay", "allowed_ips":["10.96.0.2/32"] },
+    { "from":"H", "to":"D", "endpoint":"relay", "allowed_ips":["10.96.0.1/32"] }
+  ]
+}

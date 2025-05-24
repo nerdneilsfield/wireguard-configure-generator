@@ -1,0 +1,74 @@
+{
+  "nodes": [
+    {
+      "name": "A",
+      "role": "client",
+      "wireguard_ip": "10.96.0.2",
+      "local_ips": ["192.168.1.10"],
+      "endpoints": [
+        { "name": "group", "allowed_peers":["B","C"], "endpoint":"192.168.1.10:51820" },
+        { "name": "relay", "allowed_peers":["D","H"], "endpoint":"203.0.113.10:51821" }
+      ]
+    },
+    {
+      "name": "B",
+      "role": "client",
+      "wireguard_ip": "10.96.0.3",
+      "local_ips": ["192.168.1.11"],
+      "endpoints": [
+        { "name": "group", "allowed_peers":["A","C"], "endpoint":"192.168.1.11:51820" },
+        { "name": "relay", "allowed_peers":["D","H"], "endpoint":"203.0.113.11:51821" }
+      ]
+    },
+    {
+      "name": "C",
+      "role": "client",
+      "wireguard_ip": "10.96.0.4",
+      "local_ips": ["192.168.1.12"],
+      "endpoints": [
+        { "name": "group", "allowed_peers":["A","B"], "endpoint":"192.168.1.12:51820" },
+        { "name": "relay", "allowed_peers":["D","H"], "endpoint":"203.0.113.12:51821" }
+      ]
+    },
+    {
+      "name": "E",
+      "role": "client",
+      "wireguard_ip": "10.96.4.2",
+      "local_ips": ["10.0.0.2"],
+      "endpoints": [
+        { "name": "group", "allowed_peers":["F"],   "endpoint":"10.0.0.2:51820" },
+        { "name": "peers","allowed_peers":["D","H"], "endpoint":"198.51.100.2:51821" }
+      ]
+    },
+    {
+      "name": "F",
+      "role": "client",
+      "wireguard_ip": "10.96.4.3",
+      "local_ips": ["10.0.0.3"],
+      "endpoints": [
+        { "name": "group", "allowed_peers":["E"],   "endpoint":"10.0.0.3:51820" },
+        { "name": "peers","allowed_peers":["D","H"], "endpoint":"198.51.100.3:51821" }
+      ]
+    },
+    {
+      "name": "D",
+      "role": "relay",
+      "wireguard_ip": "10.96.0.1",
+      "local_ips": ["203.0.113.5"],
+      "endpoints": [
+        { "name": "clients","allowed_peers":["A","B","C"], "endpoint":"203.0.113.5:51820" },
+        { "name": "peers",  "allowed_peers":["E","F","H"], "endpoint":"203.0.113.5:51821" }
+      ]
+    },
+    {
+      "name": "H",
+      "role": "relay",
+      "wireguard_ip": "10.96.4.1",
+      "local_ips": ["198.51.100.10"],
+      "endpoints": [
+        { "name": "clients","allowed_peers":["A","B","C"], "endpoint":"198.51.100.10:51820" },
+        { "name": "peers",  "allowed_peers":["E","F","D"], "endpoint":"198.51.100.10:51821" }
+      ]
+    }
+  ]
+}

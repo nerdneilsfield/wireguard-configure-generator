@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nodes Configuration",
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "role": { "type": "string", "enum": ["client", "relay"] },
+          "wireguard_ip": { "type": "string", "format": "ipv4" },
+          "local_ips": {
+            "type": "array",
+            "items": { "type": "string", "format": "ipv4" },
+            "minItems": 1
+          },
+          "endpoints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "allowed_peers": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "endpoint": { "type": "string", "pattern": ".+:\\d+" }
+              },
+              "required": ["name", "allowed_peers", "endpoint"]
+            }
+          }
+        },
+        "required": ["name", "role", "wireguard_ip", "endpoints"]
+      }
+    }
+  },
+  "required": ["nodes"]
+}

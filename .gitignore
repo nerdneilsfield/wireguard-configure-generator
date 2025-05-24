@@ -27,3 +27,7 @@ __pycache__/
 .DS_Store
 
 .env
+output*/
+out*/
+*.svg
+*.png

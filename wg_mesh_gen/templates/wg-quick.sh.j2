@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e
+CONFIG="{{ out_dir }}/{{ node.name }}.conf"
+
+if wg showconf $CONFIG >/dev/null 2>&1; then
+  wg-quick down $CONFIG || true
+fi
+wg-quick up $CONFIG
