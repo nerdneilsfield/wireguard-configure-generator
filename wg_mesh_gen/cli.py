@@ -150,7 +150,8 @@ def vis(ctx, layout, output, show_edge_labels, high_dpi, verbose, log_file, node
             raise click.ClickException(f"Topology file not found: {topo_file}")
 
         # Generate visualization
-        visualize(
+        from .visualizer import visualize as viz_func
+        viz_func(
             nodes_path=nodes_file,
             topology_path=topo_file,
             output_path=output_path,
