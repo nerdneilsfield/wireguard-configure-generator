@@ -1,0 +1,1061 @@
+# WireGuard 复杂网络节点配置文件 (YAML格式)
+# 包含多层NAT、多个企业网络、家庭网络、移动用户和多个公网中继服务器
+
+nodes:
+  # ==================== 公网中继服务器 ====================
+  # 主中继服务器 - 美国东部
+  - name: R1
+    role: relay
+    wireguard_ip: 10.96.0.1
+    local_ips:
+      - 203.0.113.10  # 美国东部公网IP
+    endpoints:
+      - name: main
+        allowed_peers:
+          - R2
+          - R3
+          - R4
+          - A2-GW
+          - B2-GW
+          - H1-GW
+          - H2-GW
+          - H3-GW
+          - M1
+          - M2
+          - M3
+          - M4
+          - M5
+        endpoint: 203.0.113.10:51820
+
+  # 欧洲中继服务器
+  - name: R2
+    role: relay
+    wireguard_ip: 10.96.0.2
+    local_ips:
+      - 198.51.100.20  # 欧洲公网IP
+    endpoints:
+      - name: main
+        allowed_peers:
+          - R1
+          - R3
+          - R4
+          - A2-GW
+          - B2-GW
+          - H1-GW
+          - H2-GW
+          - H3-GW
+          - M1
+          - M2
+          - M3
+          - M4
+          - M5
+        endpoint: 198.51.100.20:51820
+
+  # 亚洲中继服务器
+  - name: R3
+    role: relay
+    wireguard_ip: 10.96.0.3
+    local_ips:
+      - 192.0.2.30  # 亚洲公网IP
+    endpoints:
+      - name: main
+        allowed_peers:
+          - R1
+          - R2
+          - R4
+          - A2-GW
+          - B2-GW
+          - H1-GW
+          - H2-GW
+          - H3-GW
+          - M1
+          - M2
+          - M3
+          - M4
+          - M5
+        endpoint: 192.0.2.30:51820
+
+  # 备用中继服务器 - 美国西部
+  - name: R4
+    role: relay
+    wireguard_ip: 10.96.0.4
+    local_ips:
+      - 198.51.100.40  # 美国西部公网IP
+    endpoints:
+      - name: main
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - A2-GW
+          - B2-GW
+          - H1-GW
+          - H2-GW
+          - H3-GW
+          - M1
+          - M2
+          - M3
+          - M4
+          - M5
+        endpoint: 198.51.100.40:51820
+
+  # ==================== 企业A网络 (10.1.0.0/16) ====================
+  # NAT2层网关 - 企业A主网关
+  - name: A2-GW
+    role: gateway
+    wireguard_ip: 10.96.1.1
+    local_ips:
+      - 10.1.0.1      # 企业内网网关IP
+      - 203.0.113.100 # 企业公网IP
+    endpoints:
+      # 上联公网中继
+      - name: relay
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 203.0.113.100:51820
+      # 下联企业内网
+      - name: internal
+        allowed_peers:
+          - A3-GW-11
+          - A3-GW-12
+          - A3-GW-21
+        endpoint: 10.1.0.1:51821
+
+  # NAT3层网关 - 部门A11网关
+  - name: A3-GW-11
+    role: gateway
+    wireguard_ip: 10.96.1.11
+    local_ips:
+      - 10.1.1.1   # 部门网关IP
+    endpoints:
+      # 上联企业网关
+      - name: uplink
+        allowed_peers:
+          - A2-GW
+        endpoint: 10.1.1.1:51820
+      # 下联办公室网关
+      - name: downlink
+        allowed_peers:
+          - A4-GW-111
+          - A4-GW-112
+        endpoint: 10.1.1.1:51821
+      # 部门内直连
+      - name: dept
+        allowed_peers:
+          - A3-GW-12
+          - A3-GW-21
+        endpoint: 10.1.1.1:51822
+
+  # NAT3层网关 - 部门A12网关
+  - name: A3-GW-12
+    role: gateway
+    wireguard_ip: 10.96.1.12
+    local_ips:
+      - 10.1.1.17  # 部门网关IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - A2-GW
+        endpoint: 10.1.1.17:51820
+      - name: downlink
+        allowed_peers:
+          - A4-GW-121
+          - A4-GW-122
+        endpoint: 10.1.1.17:51821
+      - name: dept
+        allowed_peers:
+          - A3-GW-11
+          - A3-GW-21
+        endpoint: 10.1.1.17:51822
+
+  # NAT3层网关 - 部门A21网关
+  - name: A3-GW-21
+    role: gateway
+    wireguard_ip: 10.96.1.21
+    local_ips:
+      - 10.1.2.1   # 部门网关IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - A2-GW
+        endpoint: 10.1.2.1:51820
+      - name: downlink
+        allowed_peers:
+          - A4-GW-211
+          - A4-GW-212
+        endpoint: 10.1.2.1:51821
+      - name: dept
+        allowed_peers:
+          - A3-GW-11
+          - A3-GW-12
+        endpoint: 10.1.2.1:51822
+
+  # NAT4层网关 - 办公室A111网关
+  - name: A4-GW-111
+    role: gateway
+    wireguard_ip: 10.96.1.111
+    local_ips:
+      - 10.1.1.2   # 办公室网关IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - A3-GW-11
+        endpoint: 10.1.1.2:51820
+      - name: local
+        allowed_peers:
+          - A111-1
+          - A111-2
+          - A111-3
+        endpoint: 10.1.1.2:51821
+
+  # NAT4层网关 - 办公室A112网关
+  - name: A4-GW-112
+    role: gateway
+    wireguard_ip: 10.96.1.112
+    local_ips:
+      - 10.1.1.6   # 办公室网关IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - A3-GW-11
+        endpoint: 10.1.1.6:51820
+      - name: local
+        allowed_peers:
+          - A112-1
+          - A112-2
+        endpoint: 10.1.1.6:51821
+
+  # NAT4层网关 - 办公室A121网关
+  - name: A4-GW-121
+    role: gateway
+    wireguard_ip: 10.96.1.121
+    local_ips:
+      - 10.1.1.18  # 办公室网关IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - A3-GW-12
+        endpoint: 10.1.1.18:51820
+      - name: local
+        allowed_peers:
+          - A121-1
+          - A121-2
+          - A121-3
+        endpoint: 10.1.1.18:51821
+
+  # NAT4层网关 - 办公室A122网关
+  - name: A4-GW-122
+    role: gateway
+    wireguard_ip: 10.96.1.122
+    local_ips:
+      - 10.1.1.22  # 办公室网关IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - A3-GW-12
+        endpoint: 10.1.1.22:51820
+      - name: local
+        allowed_peers:
+          - A122-1
+          - A122-2
+        endpoint: 10.1.1.22:51821
+
+  # NAT4层网关 - 办公室A211网关
+  - name: A4-GW-211
+    role: gateway
+    wireguard_ip: 10.96.1.211
+    local_ips:
+      - 10.1.2.2   # 办公室网关IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - A3-GW-21
+        endpoint: 10.1.2.2:51820
+      - name: local
+        allowed_peers:
+          - A211-1
+          - A211-2
+          - A211-3
+          - A211-4
+        endpoint: 10.1.2.2:51821
+
+  # NAT4层网关 - 办公室A212网关
+  - name: A4-GW-212
+    role: gateway
+    wireguard_ip: 10.96.1.212
+    local_ips:
+      - 10.1.2.6   # 办公室网关IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - A3-GW-21
+        endpoint: 10.1.2.6:51820
+      - name: local
+        allowed_peers:
+          - A212-1
+          - A212-2
+        endpoint: 10.1.2.6:51821
+
+  # 企业A终端设备
+  - name: A111-1
+    role: client
+    wireguard_ip: 10.96.1.31
+    local_ips:
+      - 10.1.1.3
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-111
+          - A111-2
+          - A111-3
+        endpoint: 10.1.1.3:51820
+
+  - name: A111-2
+    role: client
+    wireguard_ip: 10.96.1.32
+    local_ips:
+      - 10.1.1.4
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-111
+          - A111-1
+          - A111-3
+        endpoint: 10.1.1.4:51820
+
+  - name: A111-3
+    role: client
+    wireguard_ip: 10.96.1.33
+    local_ips:
+      - 10.1.1.5
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-111
+          - A111-1
+          - A111-2
+        endpoint: 10.1.1.5:51820
+
+  - name: A112-1
+    role: client
+    wireguard_ip: 10.96.1.34
+    local_ips:
+      - 10.1.1.7
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-112
+          - A112-2
+        endpoint: 10.1.1.7:51820
+
+  - name: A112-2
+    role: client
+    wireguard_ip: 10.96.1.35
+    local_ips:
+      - 10.1.1.8
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-112
+          - A112-1
+        endpoint: 10.1.1.8:51820
+
+  - name: A121-1
+    role: client
+    wireguard_ip: 10.96.1.36
+    local_ips:
+      - 10.1.1.19
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-121
+          - A121-2
+          - A121-3
+        endpoint: 10.1.1.19:51820
+
+  - name: A121-2
+    role: client
+    wireguard_ip: 10.96.1.37
+    local_ips:
+      - 10.1.1.20
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-121
+          - A121-1
+          - A121-3
+        endpoint: 10.1.1.20:51820
+
+  - name: A121-3
+    role: client
+    wireguard_ip: 10.96.1.38
+    local_ips:
+      - 10.1.1.21
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-121
+          - A121-1
+          - A121-2
+        endpoint: 10.1.1.21:51820
+
+  - name: A122-1
+    role: client
+    wireguard_ip: 10.96.1.39
+    local_ips:
+      - 10.1.1.23
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-122
+          - A122-2
+        endpoint: 10.1.1.23:51820
+
+  - name: A122-2
+    role: client
+    wireguard_ip: 10.96.1.40
+    local_ips:
+      - 10.1.1.24
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-122
+          - A122-1
+        endpoint: 10.1.1.24:51820
+
+  - name: A211-1
+    role: client
+    wireguard_ip: 10.96.1.41
+    local_ips:
+      - 10.1.2.3
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-211
+          - A211-2
+          - A211-3
+          - A211-4
+        endpoint: 10.1.2.3:51820
+
+  - name: A211-2
+    role: client
+    wireguard_ip: 10.96.1.42
+    local_ips:
+      - 10.1.2.4
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-211
+          - A211-1
+          - A211-3
+          - A211-4
+        endpoint: 10.1.2.4:51820
+
+  - name: A211-3
+    role: client
+    wireguard_ip: 10.96.1.43
+    local_ips:
+      - 10.1.2.5
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-211
+          - A211-1
+          - A211-2
+          - A211-4
+        endpoint: 10.1.2.5:51820
+
+  - name: A211-4
+    role: client
+    wireguard_ip: 10.96.1.44
+    local_ips:
+      - 10.1.2.6
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-211
+          - A211-1
+          - A211-2
+          - A211-3
+        endpoint: 10.1.2.6:51820
+
+  - name: A212-1
+    role: client
+    wireguard_ip: 10.96.1.45
+    local_ips:
+      - 10.1.2.7
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-212
+          - A212-2
+        endpoint: 10.1.2.7:51820
+
+  - name: A212-2
+    role: client
+    wireguard_ip: 10.96.1.46
+    local_ips:
+      - 10.1.2.8
+    endpoints:
+      - name: office
+        allowed_peers:
+          - A4-GW-212
+          - A212-1
+        endpoint: 10.1.2.8:51820
+
+  # ==================== 企业B网络 (10.2.0.0/16) ====================
+  # NAT2层网关 - 企业B主网关
+  - name: B2-GW
+    role: gateway
+    wireguard_ip: 10.96.2.1
+    local_ips:
+      - 10.2.0.1      # 企业内网网关IP
+      - 198.51.100.200 # 企业公网IP
+    endpoints:
+      - name: relay
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 198.51.100.200:51820
+      - name: internal
+        allowed_peers:
+          - B3-GW-11
+          - B3-GW-12
+          - B3-GW-21
+          - B3-GW-22
+        endpoint: 10.2.0.1:51821
+
+  # NAT3层网关 - 部门B11网关
+  - name: B3-GW-11
+    role: gateway
+    wireguard_ip: 10.96.2.11
+    local_ips:
+      - 10.2.1.1
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - B2-GW
+        endpoint: 10.2.1.1:51820
+      - name: downlink
+        allowed_peers:
+          - B4-GW-111
+          - B4-GW-112
+          - B4-GW-113
+        endpoint: 10.2.1.1:51821
+      - name: dept
+        allowed_peers:
+          - B3-GW-12
+          - B3-GW-21
+          - B3-GW-22
+        endpoint: 10.2.1.1:51822
+
+  # NAT3层网关 - 部门B12网关
+  - name: B3-GW-12
+    role: gateway
+    wireguard_ip: 10.96.2.12
+    local_ips:
+      - 10.2.1.33
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - B2-GW
+        endpoint: 10.2.1.33:51820
+      - name: downlink
+        allowed_peers:
+          - B4-GW-121
+          - B4-GW-122
+        endpoint: 10.2.1.33:51821
+      - name: dept
+        allowed_peers:
+          - B3-GW-11
+          - B3-GW-21
+          - B3-GW-22
+        endpoint: 10.2.1.33:51822
+
+  # NAT3层网关 - 部门B21网关
+  - name: B3-GW-21
+    role: gateway
+    wireguard_ip: 10.96.2.21
+    local_ips:
+      - 10.2.2.1
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - B2-GW
+        endpoint: 10.2.2.1:51820
+      - name: downlink
+        allowed_peers:
+          - B4-GW-211
+          - B4-GW-212
+        endpoint: 10.2.2.1:51821
+      - name: dept
+        allowed_peers:
+          - B3-GW-11
+          - B3-GW-12
+          - B3-GW-22
+        endpoint: 10.2.2.1:51822
+
+  # NAT3层网关 - 部门B22网关
+  - name: B3-GW-22
+    role: gateway
+    wireguard_ip: 10.96.2.22
+    local_ips:
+      - 10.2.2.33
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - B2-GW
+        endpoint: 10.2.2.33:51820
+      - name: downlink
+        allowed_peers:
+          - B4-GW-221
+          - B4-GW-222
+          - B4-GW-223
+        endpoint: 10.2.2.33:51821
+      - name: dept
+        allowed_peers:
+          - B3-GW-11
+          - B3-GW-12
+          - B3-GW-21
+        endpoint: 10.2.2.33:51822
+
+  # NAT4层网关和终端设备（企业B）
+  - name: B4-GW-111
+    role: gateway
+    wireguard_ip: 10.96.2.111
+    local_ips:
+      - 10.2.1.2
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - B3-GW-11
+        endpoint: 10.2.1.2:51820
+      - name: local
+        allowed_peers:
+          - B111-1
+          - B111-2
+          - B111-3
+        endpoint: 10.2.1.2:51821
+
+  - name: B111-1
+    role: client
+    wireguard_ip: 10.96.2.51
+    local_ips:
+      - 10.2.1.3
+    endpoints:
+      - name: office
+        allowed_peers:
+          - B4-GW-111
+          - B111-2
+          - B111-3
+        endpoint: 10.2.1.3:51820
+
+  - name: B111-2
+    role: client
+    wireguard_ip: 10.96.2.52
+    local_ips:
+      - 10.2.1.4
+    endpoints:
+      - name: office
+        allowed_peers:
+          - B4-GW-111
+          - B111-1
+          - B111-3
+        endpoint: 10.2.1.4:51820
+
+  - name: B111-3
+    role: client
+    wireguard_ip: 10.96.2.53
+    local_ips:
+      - 10.2.1.5
+    endpoints:
+      - name: office
+        allowed_peers:
+          - B4-GW-111
+          - B111-1
+          - B111-2
+        endpoint: 10.2.1.5:51820
+
+  # ==================== 家庭网络 ====================
+  # 家庭网络1 (192.168.1.0/24)
+  - name: H1-GW
+    role: gateway
+    wireguard_ip: 10.96.3.1
+    local_ips:
+      - 192.168.1.1    # 家庭路由器IP
+      - 203.0.113.150  # 家庭公网IP
+    endpoints:
+      - name: relay
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 203.0.113.150:51820
+      - name: home
+        allowed_peers:
+          - H1-1
+          - H1-2
+          - H1-3
+          - H1-4
+          - H1-5
+        endpoint: 192.168.1.1:51821
+
+  - name: H1-1
+    role: client
+    wireguard_ip: 10.96.3.11
+    local_ips:
+      - 192.168.1.10
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H1-GW
+          - H1-2
+          - H1-3
+          - H1-4
+          - H1-5
+        endpoint: 192.168.1.10:51820
+
+  - name: H1-2
+    role: client
+    wireguard_ip: 10.96.3.12
+    local_ips:
+      - 192.168.1.11
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H1-GW
+          - H1-1
+          - H1-3
+          - H1-4
+          - H1-5
+        endpoint: 192.168.1.11:51820
+
+  - name: H1-3
+    role: client
+    wireguard_ip: 10.96.3.13
+    local_ips:
+      - 192.168.1.12
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H1-GW
+          - H1-1
+          - H1-2
+          - H1-4
+          - H1-5
+        endpoint: 192.168.1.12:51820
+
+  - name: H1-4
+    role: client
+    wireguard_ip: 10.96.3.14
+    local_ips:
+      - 192.168.1.13
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H1-GW
+          - H1-1
+          - H1-2
+          - H1-3
+          - H1-5
+        endpoint: 192.168.1.13:51820
+
+  - name: H1-5
+    role: client
+    wireguard_ip: 10.96.3.15
+    local_ips:
+      - 192.168.1.14
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H1-GW
+          - H1-1
+          - H1-2
+          - H1-3
+          - H1-4
+        endpoint: 192.168.1.14:51820
+
+  # 家庭网络2 (192.168.2.0/24)
+  - name: H2-GW
+    role: gateway
+    wireguard_ip: 10.96.3.21
+    local_ips:
+      - 192.168.2.1    # 家庭路由器IP
+      - 198.51.100.160 # 家庭公网IP
+    endpoints:
+      - name: relay
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 198.51.100.160:51820
+      - name: home
+        allowed_peers:
+          - H2-1
+          - H2-2
+          - H2-3
+        endpoint: 192.168.2.1:51821
+
+  - name: H2-1
+    role: client
+    wireguard_ip: 10.96.3.31
+    local_ips:
+      - 192.168.2.10
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H2-GW
+          - H2-2
+          - H2-3
+        endpoint: 192.168.2.10:51820
+
+  - name: H2-2
+    role: client
+    wireguard_ip: 10.96.3.32
+    local_ips:
+      - 192.168.2.11
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H2-GW
+          - H2-1
+          - H2-3
+        endpoint: 192.168.2.11:51820
+
+  - name: H2-3
+    role: client
+    wireguard_ip: 10.96.3.33
+    local_ips:
+      - 192.168.2.12
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H2-GW
+          - H2-1
+          - H2-2
+        endpoint: 192.168.2.12:51820
+
+  # 家庭网络3 (192.168.3.0/24) - 多层NAT家庭网络
+  - name: H3-GW
+    role: gateway
+    wireguard_ip: 10.96.3.41
+    local_ips:
+      - 192.168.3.1    # 主路由器IP
+      - 192.0.2.170    # 家庭公网IP
+    endpoints:
+      - name: relay
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 192.0.2.170:51820
+      - name: home
+        allowed_peers:
+          - H3-SUB1
+          - H3-SUB2
+          - H3-1
+          - H3-2
+        endpoint: 192.168.3.1:51821
+
+  # 家庭网络3子路由器1
+  - name: H3-SUB1
+    role: gateway
+    wireguard_ip: 10.96.3.42
+    local_ips:
+      - 192.168.3.10   # 子路由器IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - H3-GW
+        endpoint: 192.168.3.10:51820
+      - name: subnet
+        allowed_peers:
+          - H3-3
+          - H3-4
+          - H3-5
+        endpoint: 192.168.3.10:51821
+
+  # 家庭网络3子路由器2
+  - name: H3-SUB2
+    role: gateway
+    wireguard_ip: 10.96.3.43
+    local_ips:
+      - 192.168.3.20   # 子路由器IP
+    endpoints:
+      - name: uplink
+        allowed_peers:
+          - H3-GW
+        endpoint: 192.168.3.20:51820
+      - name: subnet
+        allowed_peers:
+          - H3-6
+          - H3-7
+        endpoint: 192.168.3.20:51821
+
+  # 家庭网络3终端设备
+  - name: H3-1
+    role: client
+    wireguard_ip: 10.96.3.51
+    local_ips:
+      - 192.168.3.2
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H3-GW
+          - H3-2
+        endpoint: 192.168.3.2:51820
+
+  - name: H3-2
+    role: client
+    wireguard_ip: 10.96.3.52
+    local_ips:
+      - 192.168.3.3
+    endpoints:
+      - name: home
+        allowed_peers:
+          - H3-GW
+          - H3-1
+        endpoint: 192.168.3.3:51820
+
+  - name: H3-3
+    role: client
+    wireguard_ip: 10.96.3.53
+    local_ips:
+      - 192.168.3.11
+    endpoints:
+      - name: subnet
+        allowed_peers:
+          - H3-SUB1
+          - H3-4
+          - H3-5
+        endpoint: 192.168.3.11:51820
+
+  - name: H3-4
+    role: client
+    wireguard_ip: 10.96.3.54
+    local_ips:
+      - 192.168.3.12
+    endpoints:
+      - name: subnet
+        allowed_peers:
+          - H3-SUB1
+          - H3-3
+          - H3-5
+        endpoint: 192.168.3.12:51820
+
+  - name: H3-5
+    role: client
+    wireguard_ip: 10.96.3.55
+    local_ips:
+      - 192.168.3.13
+    endpoints:
+      - name: subnet
+        allowed_peers:
+          - H3-SUB1
+          - H3-3
+          - H3-4
+        endpoint: 192.168.3.13:51820
+
+  - name: H3-6
+    role: client
+    wireguard_ip: 10.96.3.56
+    local_ips:
+      - 192.168.3.21
+    endpoints:
+      - name: subnet
+        allowed_peers:
+          - H3-SUB2
+          - H3-7
+        endpoint: 192.168.3.21:51820
+
+  - name: H3-7
+    role: client
+    wireguard_ip: 10.96.3.57
+    local_ips:
+      - 192.168.3.22
+    endpoints:
+      - name: subnet
+        allowed_peers:
+          - H3-SUB2
+          - H3-6
+        endpoint: 192.168.3.22:51820
+
+  # ==================== 移动用户 ====================
+  # 移动用户 - 直接连接到公网中继
+  - name: M1
+    role: client
+    wireguard_ip: 10.96.4.11
+    local_ips:
+      - 172.16.0.100   # 4G/5G网络分配的IP
+    endpoints:
+      - name: mobile
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 172.16.0.100:51820
+
+  - name: M2
+    role: client
+    wireguard_ip: 10.96.4.12
+    local_ips:
+      - 172.16.0.101
+    endpoints:
+      - name: mobile
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 172.16.0.101:51820
+
+  - name: M3
+    role: client
+    wireguard_ip: 10.96.4.13
+    local_ips:
+      - 172.16.0.102
+    endpoints:
+      - name: mobile
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 172.16.0.102:51820
+
+  - name: M4
+    role: client
+    wireguard_ip: 10.96.4.14
+    local_ips:
+      - 172.16.0.103
+    endpoints:
+      - name: mobile
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 172.16.0.103:51820
+
+  - name: M5
+    role: client
+    wireguard_ip: 10.96.4.15
+    local_ips:
+      - 172.16.0.104
+    endpoints:
+      - name: mobile
+        allowed_peers:
+          - R1
+          - R2
+          - R3
+          - R4
+        endpoint: 172.16.0.104:51820

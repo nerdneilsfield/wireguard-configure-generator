@@ -1,0 +1,1207 @@
+# WireGuard 复杂网络拓扑配置文件 (YAML格式)
+# 定义多层NAT、多企业网络、家庭网络、移动用户间的连接关系和路由规则
+
+peers:
+  # ==================== 公网中继服务器互联 ====================
+  # 主中继R1与其他中继的连接
+  - from: R1
+    to: R2
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.2/32  # 欧洲中继IP
+
+  - from: R1
+    to: R3
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.3/32  # 亚洲中继IP
+
+  - from: R1
+    to: R4
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.4/32  # 美西中继IP
+
+  # 欧洲中继R2的连接
+  - from: R2
+    to: R1
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.1/32
+
+  - from: R2
+    to: R3
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.3/32
+
+  - from: R2
+    to: R4
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.4/32
+
+  # 亚洲中继R3的连接
+  - from: R3
+    to: R1
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.1/32
+
+  - from: R3
+    to: R2
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.2/32
+
+  - from: R3
+    to: R4
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.4/32
+
+  # 美西中继R4的连接
+  - from: R4
+    to: R1
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.1/32
+
+  - from: R4
+    to: R2
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.2/32
+
+  - from: R4
+    to: R3
+    endpoint: main
+    allowed_ips:
+      - 10.96.0.3/32
+
+  # ==================== 企业A网络 - 多层NAT连接 ====================
+  # 企业A主网关到公网中继的连接
+  - from: A2-GW
+    to: R1
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20   # 允许访问整个WireGuard网络
+
+  - from: A2-GW
+    to: R2
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A2-GW
+    to: R3
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A2-GW
+    to: R4
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # NAT3层网关到企业主网关的上联
+  - from: A3-GW-11
+    to: A2-GW
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20   # 允许访问外部网络
+
+  - from: A3-GW-12
+    to: A2-GW
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A3-GW-21
+    to: A2-GW
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # NAT3层网关间的部门互联
+  - from: A3-GW-11
+    to: A3-GW-12
+    endpoint: dept
+    allowed_ips:
+      - 10.96.1.12/32  # 访问其他部门网关
+      - 10.1.1.16/28   # 访问其他部门内网
+
+  - from: A3-GW-11
+    to: A3-GW-21
+    endpoint: dept
+    allowed_ips:
+      - 10.96.1.21/32
+      - 10.1.2.0/24
+
+  - from: A3-GW-12
+    to: A3-GW-11
+    endpoint: dept
+    allowed_ips:
+      - 10.96.1.11/32
+      - 10.1.1.0/28
+
+  - from: A3-GW-12
+    to: A3-GW-21
+    endpoint: dept
+    allowed_ips:
+      - 10.96.1.21/32
+      - 10.1.2.0/24
+
+  - from: A3-GW-21
+    to: A3-GW-11
+    endpoint: dept
+    allowed_ips:
+      - 10.96.1.11/32
+      - 10.1.1.0/28
+
+  - from: A3-GW-21
+    to: A3-GW-12
+    endpoint: dept
+    allowed_ips:
+      - 10.96.1.12/32
+      - 10.1.1.16/28
+
+  # NAT4层网关到NAT3层的上联
+  - from: A4-GW-111
+    to: A3-GW-11
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A4-GW-112
+    to: A3-GW-11
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A4-GW-121
+    to: A3-GW-12
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A4-GW-122
+    to: A3-GW-12
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A4-GW-211
+    to: A3-GW-21
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A4-GW-212
+    to: A3-GW-21
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # 办公室A111内部mesh连接
+  - from: A111-1
+    to: A4-GW-111
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20   # 通过网关访问外部网络
+
+  - from: A111-1
+    to: A111-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.32/32  # 访问同事设备
+
+  - from: A111-1
+    to: A111-3
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.33/32
+
+  - from: A111-2
+    to: A4-GW-111
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A111-2
+    to: A111-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.31/32
+
+  - from: A111-2
+    to: A111-3
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.33/32
+
+  - from: A111-3
+    to: A4-GW-111
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A111-3
+    to: A111-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.31/32
+
+  - from: A111-3
+    to: A111-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.32/32
+
+  # 办公室A112内部连接
+  - from: A112-1
+    to: A4-GW-112
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A112-1
+    to: A112-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.35/32
+
+  - from: A112-2
+    to: A4-GW-112
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A112-2
+    to: A112-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.34/32
+
+  # 办公室A121内部mesh连接
+  - from: A121-1
+    to: A4-GW-121
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A121-1
+    to: A121-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.37/32
+
+  - from: A121-1
+    to: A121-3
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.38/32
+
+  - from: A121-2
+    to: A4-GW-121
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A121-2
+    to: A121-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.36/32
+
+  - from: A121-2
+    to: A121-3
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.38/32
+
+  - from: A121-3
+    to: A4-GW-121
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A121-3
+    to: A121-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.36/32
+
+  - from: A121-3
+    to: A121-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.37/32
+
+  # 办公室A122内部连接
+  - from: A122-1
+    to: A4-GW-122
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A122-1
+    to: A122-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.40/32
+
+  - from: A122-2
+    to: A4-GW-122
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A122-2
+    to: A122-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.39/32
+
+  # 办公室A211内部mesh连接（4台设备）
+  - from: A211-1
+    to: A4-GW-211
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A211-1
+    to: A211-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.42/32
+
+  - from: A211-1
+    to: A211-3
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.43/32
+
+  - from: A211-1
+    to: A211-4
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.44/32
+
+  - from: A211-2
+    to: A4-GW-211
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A211-2
+    to: A211-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.41/32
+
+  - from: A211-2
+    to: A211-3
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.43/32
+
+  - from: A211-2
+    to: A211-4
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.44/32
+
+  - from: A211-3
+    to: A4-GW-211
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A211-3
+    to: A211-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.41/32
+
+  - from: A211-3
+    to: A211-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.42/32
+
+  - from: A211-3
+    to: A211-4
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.44/32
+
+  - from: A211-4
+    to: A4-GW-211
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A211-4
+    to: A211-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.41/32
+
+  - from: A211-4
+    to: A211-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.42/32
+
+  - from: A211-4
+    to: A211-3
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.43/32
+
+  # 办公室A212内部连接
+  - from: A212-1
+    to: A4-GW-212
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A212-1
+    to: A212-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.46/32
+
+  - from: A212-2
+    to: A4-GW-212
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: A212-2
+    to: A212-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.1.45/32
+
+  # ==================== 企业B网络 - 多层NAT连接 ====================
+  # 企业B主网关到公网中继的连接
+  - from: B2-GW
+    to: R1
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: B2-GW
+    to: R2
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: B2-GW
+    to: R3
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: B2-GW
+    to: R4
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # NAT3层网关到企业主网关的上联
+  - from: B3-GW-11
+    to: B2-GW
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: B3-GW-12
+    to: B2-GW
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: B3-GW-21
+    to: B2-GW
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: B3-GW-22
+    to: B2-GW
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # NAT3层网关间的部门互联（企业B有4个部门）
+  - from: B3-GW-11
+    to: B3-GW-12
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.12/32
+      - 10.2.1.32/28
+
+  - from: B3-GW-11
+    to: B3-GW-21
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.21/32
+      - 10.2.2.0/28
+
+  - from: B3-GW-11
+    to: B3-GW-22
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.22/32
+      - 10.2.2.32/28
+
+  - from: B3-GW-12
+    to: B3-GW-11
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.11/32
+      - 10.2.1.0/28
+
+  - from: B3-GW-12
+    to: B3-GW-21
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.21/32
+      - 10.2.2.0/28
+
+  - from: B3-GW-12
+    to: B3-GW-22
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.22/32
+      - 10.2.2.32/28
+
+  - from: B3-GW-21
+    to: B3-GW-11
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.11/32
+      - 10.2.1.0/28
+
+  - from: B3-GW-21
+    to: B3-GW-12
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.12/32
+      - 10.2.1.32/28
+
+  - from: B3-GW-21
+    to: B3-GW-22
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.22/32
+      - 10.2.2.32/28
+
+  - from: B3-GW-22
+    to: B3-GW-11
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.11/32
+      - 10.2.1.0/28
+
+  - from: B3-GW-22
+    to: B3-GW-12
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.12/32
+      - 10.2.1.32/28
+
+  - from: B3-GW-22
+    to: B3-GW-21
+    endpoint: dept
+    allowed_ips:
+      - 10.96.2.21/32
+      - 10.2.2.0/28
+
+  # NAT4层网关到NAT3层的上联
+  - from: B4-GW-111
+    to: B3-GW-11
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # 企业B办公室内部mesh连接
+  - from: B111-1
+    to: B4-GW-111
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: B111-1
+    to: B111-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.2.52/32
+
+  - from: B111-1
+    to: B111-3
+    endpoint: office
+    allowed_ips:
+      - 10.96.2.53/32
+
+  - from: B111-2
+    to: B4-GW-111
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: B111-2
+    to: B111-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.2.51/32
+
+  - from: B111-2
+    to: B111-3
+    endpoint: office
+    allowed_ips:
+      - 10.96.2.53/32
+
+  - from: B111-3
+    to: B4-GW-111
+    endpoint: office
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: B111-3
+    to: B111-1
+    endpoint: office
+    allowed_ips:
+      - 10.96.2.51/32
+
+  - from: B111-3
+    to: B111-2
+    endpoint: office
+    allowed_ips:
+      - 10.96.2.52/32
+
+  # ==================== 家庭网络连接 ====================
+  # 家庭网络1到公网中继的连接
+  - from: H1-GW
+    to: R1
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H1-GW
+    to: R2
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H1-GW
+    to: R3
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H1-GW
+    to: R4
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # 家庭网络1内部mesh连接（5台设备）
+  - from: H1-1
+    to: H1-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H1-1
+    to: H1-2
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.12/32
+
+  - from: H1-1
+    to: H1-3
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.13/32
+
+  - from: H1-1
+    to: H1-4
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.14/32
+
+  - from: H1-1
+    to: H1-5
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.15/32
+
+  - from: H1-2
+    to: H1-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H1-2
+    to: H1-1
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.11/32
+
+  - from: H1-2
+    to: H1-3
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.13/32
+
+  - from: H1-2
+    to: H1-4
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.14/32
+
+  - from: H1-2
+    to: H1-5
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.15/32
+
+  - from: H1-3
+    to: H1-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H1-3
+    to: H1-1
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.11/32
+
+  - from: H1-3
+    to: H1-2
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.12/32
+
+  - from: H1-3
+    to: H1-4
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.14/32
+
+  - from: H1-3
+    to: H1-5
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.15/32
+
+  - from: H1-4
+    to: H1-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H1-4
+    to: H1-1
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.11/32
+
+  - from: H1-4
+    to: H1-2
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.12/32
+
+  - from: H1-4
+    to: H1-3
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.13/32
+
+  - from: H1-4
+    to: H1-5
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.15/32
+
+  - from: H1-5
+    to: H1-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H1-5
+    to: H1-1
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.11/32
+
+  - from: H1-5
+    to: H1-2
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.12/32
+
+  - from: H1-5
+    to: H1-3
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.13/32
+
+  - from: H1-5
+    to: H1-4
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.14/32
+
+  # 家庭网络2到公网中继的连接
+  - from: H2-GW
+    to: R1
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H2-GW
+    to: R2
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H2-GW
+    to: R3
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H2-GW
+    to: R4
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # 家庭网络2内部mesh连接
+  - from: H2-1
+    to: H2-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H2-1
+    to: H2-2
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.32/32
+
+  - from: H2-1
+    to: H2-3
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.33/32
+
+  - from: H2-2
+    to: H2-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H2-2
+    to: H2-1
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.31/32
+
+  - from: H2-2
+    to: H2-3
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.33/32
+
+  - from: H2-3
+    to: H2-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H2-3
+    to: H2-1
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.31/32
+
+  - from: H2-3
+    to: H2-2
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.32/32
+
+  # 家庭网络3（多层NAT）到公网中继的连接
+  - from: H3-GW
+    to: R1
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-GW
+    to: R2
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-GW
+    to: R3
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-GW
+    to: R4
+    endpoint: relay
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # 家庭网络3子路由器到主路由器的上联
+  - from: H3-SUB1
+    to: H3-GW
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-SUB2
+    to: H3-GW
+    endpoint: uplink
+    allowed_ips:
+      - 10.96.0.0/20
+
+  # 家庭网络3主路由器直连设备
+  - from: H3-1
+    to: H3-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-1
+    to: H3-2
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.52/32
+
+  - from: H3-2
+    to: H3-GW
+    endpoint: home
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-2
+    to: H3-1
+    endpoint: home
+    allowed_ips:
+      - 10.96.3.51/32
+
+  # 家庭网络3子网1内部mesh连接
+  - from: H3-3
+    to: H3-SUB1
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-3
+    to: H3-4
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.3.54/32
+
+  - from: H3-3
+    to: H3-5
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.3.55/32
+
+  - from: H3-4
+    to: H3-SUB1
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-4
+    to: H3-3
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.3.53/32
+
+  - from: H3-4
+    to: H3-5
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.3.55/32
+
+  - from: H3-5
+    to: H3-SUB1
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-5
+    to: H3-3
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.3.53/32
+
+  - from: H3-5
+    to: H3-4
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.3.54/32
+
+  # 家庭网络3子网2内部连接
+  - from: H3-6
+    to: H3-SUB2
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-6
+    to: H3-7
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.3.57/32
+
+  - from: H3-7
+    to: H3-SUB2
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: H3-7
+    to: H3-6
+    endpoint: subnet
+    allowed_ips:
+      - 10.96.3.56/32
+
+  # ==================== 移动用户连接 ====================
+  # 移动用户到多个公网中继的连接（实现负载均衡和冗余）
+  - from: M1
+    to: R1
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M1
+    to: R2
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M1
+    to: R3
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M1
+    to: R4
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M2
+    to: R1
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M2
+    to: R2
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M2
+    to: R3
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M2
+    to: R4
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M3
+    to: R1
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M3
+    to: R2
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M3
+    to: R3
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M3
+    to: R4
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M4
+    to: R1
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M4
+    to: R2
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M4
+    to: R3
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M4
+    to: R4
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M5
+    to: R1
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M5
+    to: R2
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M5
+    to: R3
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20
+
+  - from: M5
+    to: R4
+    endpoint: mobile
+    allowed_ips:
+      - 10.96.0.0/20

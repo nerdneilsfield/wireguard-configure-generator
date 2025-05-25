@@ -102,16 +102,21 @@ def gen(ctx, auto_keys, db_path, verbose, log_file, nodes_file, topo_file, outpu
 
 
 @cli.command()
-@click.option('--layout', '-l', default='spring',
-              type=click.Choice(['spring', 'circular', 'shell', 'kamada_kawai']),
+@click.option('--layout', '-l', default='auto',
+              type=click.Choice(['auto', 'spring', 'circular', 'shell', 'hierarchical', 'kamada_kawai']),
               help='网络布局算法')
+@click.option('--output', help='输出文件路径')
+@click.option('--show-edge-labels/--no-edge-labels', default=None,
+              help='是否显示边标签（默认自动决定）')
+@click.option('--high-dpi/--low-dpi', default=True,
+              help='是否使用高DPI输出')
 @click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
 @click.option('--log-file', help='日志文件路径')
 @click.option('--nodes-file', '-n', help='节点配置文件路径')
 @click.option('--topo-file', '-t', help='拓扑配置文件路径')
 @click.option('--output-dir', '-o', help='输出目录')
 @click.pass_context
-def vis(ctx, layout, verbose, log_file, nodes_file, topo_file, output_dir):
+def vis(ctx, layout, output, show_edge_labels, high_dpi, verbose, log_file, nodes_file, topo_file, output_dir):
     """生成网络拓扑可视化图"""
     # 使用子命令参数或回退到主命令参数
     verbose = verbose or ctx.obj.get('verbose', False)
@@ -125,7 +130,11 @@ def vis(ctx, layout, verbose, log_file, nodes_file, topo_file, output_dir):
 
     logger = get_logger()
 
-    output_path = os.path.join(output_dir, 'topology.png')
+    # 确定输出路径
+    if output:
+        output_path = output
+    else:
+        output_path = os.path.join(output_dir, 'topology.png')
 
     logger.info("开始生成网络拓扑可视化")
     logger.info(f"布局算法: {layout}")
@@ -145,11 +154,70 @@ def vis(ctx, layout, verbose, log_file, nodes_file, topo_file, output_dir):
             nodes_path=nodes_file,
             topology_path=topo_file,
             output_path=output_path,
-            layout=layout
+            layout=layout,
+            show_edge_labels=show_edge_labels,
+            high_dpi=high_dpi
         )
 
         logger.info("网络拓扑可视化生成完成")
         click.echo(f"拓扑图已保存到: {output_path}")
+
+    except Exception as e:
+        logger.error(f"生成可视化失败: {e}")
+        raise click.ClickException(str(e))
+
+
+@cli.command()
+@click.argument('nodes_file')
+@click.argument('topology_file')
+@click.option('--output', '-o', default='out/topology.png', help='输出文件路径')
+@click.option('--layout', '-l', default='auto',
+              type=click.Choice(['auto', 'spring', 'circular', 'shell', 'hierarchical', 'kamada_kawai']),
+              help='网络布局算法')
+@click.option('--show-edge-labels/--no-edge-labels', default=None,
+              help='是否显示边标签（默认自动决定）')
+@click.option('--high-dpi/--low-dpi', default=True,
+              help='是否使用高DPI输出')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+def visualize(nodes_file, topology_file, output, layout, show_edge_labels, high_dpi, verbose):
+    """生成网络拓扑可视化图
+    
+    NODES_FILE: 节点配置文件路径
+    TOPOLOGY_FILE: 拓扑配置文件路径
+    """
+    if verbose:
+        setup_logging(verbose=True)
+
+    logger = get_logger()
+
+    logger.info("开始生成网络拓扑可视化")
+    logger.info(f"节点文件: {nodes_file}")
+    logger.info(f"拓扑文件: {topology_file}")
+    logger.info(f"布局算法: {layout}")
+
+    try:
+        # Check if input files exist
+        if not os.path.exists(nodes_file):
+            logger.error(f"节点配置文件不存在: {nodes_file}")
+            raise click.ClickException(f"Nodes file not found: {nodes_file}")
+
+        if not os.path.exists(topology_file):
+            logger.error(f"拓扑配置文件不存在: {topology_file}")
+            raise click.ClickException(f"Topology file not found: {topology_file}")
+
+        # Generate visualization
+        from .visualizer import visualize as viz_func
+        viz_func(
+            nodes_path=nodes_file,
+            topology_path=topology_file,
+            output_path=output,
+            layout=layout,
+            show_edge_labels=show_edge_labels,
+            high_dpi=high_dpi
+        )
+
+        logger.info("网络拓扑可视化生成完成")
+        click.echo(f"拓扑图已保存到: {output}")
 
     except Exception as e:
         logger.error(f"生成可视化失败: {e}")
