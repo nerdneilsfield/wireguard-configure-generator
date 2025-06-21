@@ -100,20 +100,13 @@ def validate_business_logic(nodes: List[Dict[str, Any]], peers: List[Dict[str, A
                 raise ValueError(f"WireGuard IP 地址重复: {ip_addr}")
             wireguard_ips.add(ip_addr)
     
-    # Validate endpoints in peers match node endpoints
+    # Validate endpoints format in peers
     for peer in peers:
-        endpoint_name = peer.get('endpoint')
-        if endpoint_name:
-            from_node_name = peer['from']
-            from_node = next((n for n in nodes if n['name'] == from_node_name), None)
-            
-            if from_node and 'endpoints' in from_node:
-                endpoint_names = [e['name'] for e in from_node['endpoints']]
-                if endpoint_name not in endpoint_names:
-                    raise ValueError(
-                        f"对等连接引用了不存在的端点: {endpoint_name} "
-                        f"(节点 {from_node_name} 的可用端点: {endpoint_names})"
-                    )
+        endpoint = peer.get('endpoint')
+        if endpoint:
+            # Just validate it's a valid endpoint format (host:port)
+            if ':' not in endpoint:
+                raise ValueError(f"端点格式无效，应为 host:port 格式: {endpoint}")
     
     logger.info("业务逻辑验证通过")
     return True

@@ -1,0 +1,1078 @@
+peers:
+- from: CORE-US-EAST
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-US-EAST
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-US-EAST
+  to: CORE-EU-NORTH
+  endpoint: core.eu.north.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-US-EAST
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-US-EAST
+  to: CORE-SOUTH-AMERICA
+  endpoint: core.south.america.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-US-WEST
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-US-WEST
+  to: CORE-EU-NORTH
+  endpoint: core.eu.north.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-US-WEST
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-US-WEST
+  to: CORE-SOUTH-AMERICA
+  endpoint: core.south.america.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-EU-CENTRAL
+  to: CORE-EU-NORTH
+  endpoint: core.eu.north.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-EU-CENTRAL
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-EU-CENTRAL
+  to: CORE-SOUTH-AMERICA
+  endpoint: core.south.america.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-EU-NORTH
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-EU-NORTH
+  to: CORE-SOUTH-AMERICA
+  endpoint: core.south.america.example.com:51820
+  persistent_keepalive: 25
+- from: CORE-ASIA-PACIFIC
+  to: CORE-SOUTH-AMERICA
+  endpoint: core.south.america.example.com:51820
+  persistent_keepalive: 25
+- from: AGG-USE-DC1
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USE-DC1
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USE-DC1
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USE-DC2
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USE-DC2
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USE-DC2
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USE-DC3
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USE-DC3
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USE-DC3
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USW-DC1
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USW-DC1
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USW-DC1
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USW-DC2
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USW-DC2
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USW-DC2
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USW-DC3
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USW-DC3
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-USW-DC3
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUC-DC1
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUC-DC1
+  to: CORE-EU-NORTH
+  endpoint: core.eu.north.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUC-DC1
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUC-DC2
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUC-DC2
+  to: CORE-EU-NORTH
+  endpoint: core.eu.north.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUC-DC2
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUC-DC3
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUC-DC3
+  to: CORE-EU-NORTH
+  endpoint: core.eu.north.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUC-DC3
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUN-DC1
+  to: CORE-EU-NORTH
+  endpoint: core.eu.north.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUN-DC1
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUN-DC2
+  to: CORE-EU-NORTH
+  endpoint: core.eu.north.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-EUN-DC2
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC1
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC1
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC1
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC2
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC2
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC2
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC3
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC3
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC3
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC4
+  to: CORE-ASIA-PACIFIC
+  endpoint: core.asia.pacific.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC4
+  to: CORE-US-WEST
+  endpoint: core.us.west.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-AP-DC4
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-SA-DC1
+  to: CORE-SOUTH-AMERICA
+  endpoint: core.south.america.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-SA-DC1
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-SA-DC1
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-SA-DC2
+  to: CORE-SOUTH-AMERICA
+  endpoint: core.south.america.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-SA-DC2
+  to: CORE-US-EAST
+  endpoint: core.us.east.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: AGG-SA-DC2
+  to: CORE-EU-CENTRAL
+  endpoint: core.eu.central.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/16
+  persistent_keepalive: 25
+- from: ACC-USE-1
+  to: AGG-USE-DC1
+  endpoint: agg.use.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USE-1
+  to: AGG-USE-DC2
+  endpoint: agg.use.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USE-2
+  to: AGG-USE-DC2
+  endpoint: agg.use.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USE-2
+  to: AGG-USE-DC3
+  endpoint: agg.use.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USE-3
+  to: AGG-USE-DC3
+  endpoint: agg.use.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USE-3
+  to: AGG-USE-DC1
+  endpoint: agg.use.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USE-4
+  to: AGG-USE-DC1
+  endpoint: agg.use.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USE-4
+  to: AGG-USE-DC2
+  endpoint: agg.use.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USE-5
+  to: AGG-USE-DC2
+  endpoint: agg.use.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USE-5
+  to: AGG-USE-DC3
+  endpoint: agg.use.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-1
+  to: AGG-USW-DC1
+  endpoint: agg.usw.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-1
+  to: AGG-USW-DC2
+  endpoint: agg.usw.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-2
+  to: AGG-USW-DC2
+  endpoint: agg.usw.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-2
+  to: AGG-USW-DC3
+  endpoint: agg.usw.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-3
+  to: AGG-USW-DC3
+  endpoint: agg.usw.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-3
+  to: AGG-USW-DC1
+  endpoint: agg.usw.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-4
+  to: AGG-USW-DC1
+  endpoint: agg.usw.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-4
+  to: AGG-USW-DC2
+  endpoint: agg.usw.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-5
+  to: AGG-USW-DC2
+  endpoint: agg.usw.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-USW-5
+  to: AGG-USW-DC3
+  endpoint: agg.usw.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-1
+  to: AGG-EUC-DC1
+  endpoint: agg.euc.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-1
+  to: AGG-EUC-DC2
+  endpoint: agg.euc.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-2
+  to: AGG-EUC-DC2
+  endpoint: agg.euc.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-2
+  to: AGG-EUC-DC3
+  endpoint: agg.euc.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-3
+  to: AGG-EUC-DC3
+  endpoint: agg.euc.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-3
+  to: AGG-EUC-DC1
+  endpoint: agg.euc.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-4
+  to: AGG-EUC-DC1
+  endpoint: agg.euc.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-4
+  to: AGG-EUC-DC2
+  endpoint: agg.euc.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-5
+  to: AGG-EUC-DC2
+  endpoint: agg.euc.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUC-5
+  to: AGG-EUC-DC3
+  endpoint: agg.euc.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-1
+  to: AGG-EUN-DC1
+  endpoint: agg.eun.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-1
+  to: AGG-EUN-DC2
+  endpoint: agg.eun.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-2
+  to: AGG-EUN-DC2
+  endpoint: agg.eun.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-2
+  to: AGG-EUN-DC1
+  endpoint: agg.eun.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-3
+  to: AGG-EUN-DC1
+  endpoint: agg.eun.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-3
+  to: AGG-EUN-DC2
+  endpoint: agg.eun.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-4
+  to: AGG-EUN-DC2
+  endpoint: agg.eun.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-4
+  to: AGG-EUN-DC1
+  endpoint: agg.eun.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-5
+  to: AGG-EUN-DC1
+  endpoint: agg.eun.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-EUN-5
+  to: AGG-EUN-DC2
+  endpoint: agg.eun.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-1
+  to: AGG-AP-DC1
+  endpoint: agg.ap.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-1
+  to: AGG-AP-DC2
+  endpoint: agg.ap.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-2
+  to: AGG-AP-DC2
+  endpoint: agg.ap.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-2
+  to: AGG-AP-DC3
+  endpoint: agg.ap.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-3
+  to: AGG-AP-DC3
+  endpoint: agg.ap.dc3.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-3
+  to: AGG-AP-DC4
+  endpoint: agg.ap.dc4.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-4
+  to: AGG-AP-DC4
+  endpoint: agg.ap.dc4.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-4
+  to: AGG-AP-DC1
+  endpoint: agg.ap.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-5
+  to: AGG-AP-DC1
+  endpoint: agg.ap.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-AP-5
+  to: AGG-AP-DC2
+  endpoint: agg.ap.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-1
+  to: AGG-SA-DC1
+  endpoint: agg.sa.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-1
+  to: AGG-SA-DC2
+  endpoint: agg.sa.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-2
+  to: AGG-SA-DC2
+  endpoint: agg.sa.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-2
+  to: AGG-SA-DC1
+  endpoint: agg.sa.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-3
+  to: AGG-SA-DC1
+  endpoint: agg.sa.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-3
+  to: AGG-SA-DC2
+  endpoint: agg.sa.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-4
+  to: AGG-SA-DC2
+  endpoint: agg.sa.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-4
+  to: AGG-SA-DC1
+  endpoint: agg.sa.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-5
+  to: AGG-SA-DC1
+  endpoint: agg.sa.dc1.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: ACC-SA-5
+  to: AGG-SA-DC2
+  endpoint: agg.sa.dc2.example.com:51820
+  allowed_ips:
+  - 10.0.0.0/12
+- from: CLIENT-USE-001
+  to: ACC-USE-1
+  endpoint: acc.use.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-001
+  to: ACC-USE-2
+  endpoint: acc.use.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-002
+  to: ACC-USE-2
+  endpoint: acc.use.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-003
+  to: ACC-USE-3
+  endpoint: acc.use.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-004
+  to: ACC-USE-4
+  endpoint: acc.use.4.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-004
+  to: ACC-USE-5
+  endpoint: acc.use.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-005
+  to: ACC-USE-5
+  endpoint: acc.use.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-006
+  to: ACC-USE-1
+  endpoint: acc.use.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-007
+  to: ACC-USE-2
+  endpoint: acc.use.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-007
+  to: ACC-USE-3
+  endpoint: acc.use.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-008
+  to: ACC-USE-3
+  endpoint: acc.use.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-009
+  to: ACC-USE-4
+  endpoint: acc.use.4.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-010
+  to: ACC-USE-5
+  endpoint: acc.use.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USE-010
+  to: ACC-USE-1
+  endpoint: acc.use.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-001
+  to: ACC-USW-1
+  endpoint: acc.usw.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-001
+  to: ACC-USW-2
+  endpoint: acc.usw.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-002
+  to: ACC-USW-2
+  endpoint: acc.usw.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-003
+  to: ACC-USW-3
+  endpoint: acc.usw.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-004
+  to: ACC-USW-4
+  endpoint: acc.usw.4.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-004
+  to: ACC-USW-5
+  endpoint: acc.usw.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-005
+  to: ACC-USW-5
+  endpoint: acc.usw.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-006
+  to: ACC-USW-1
+  endpoint: acc.usw.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-007
+  to: ACC-USW-2
+  endpoint: acc.usw.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-007
+  to: ACC-USW-3
+  endpoint: acc.usw.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-008
+  to: ACC-USW-3
+  endpoint: acc.usw.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-009
+  to: ACC-USW-4
+  endpoint: acc.usw.4.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-010
+  to: ACC-USW-5
+  endpoint: acc.usw.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-USW-010
+  to: ACC-USW-1
+  endpoint: acc.usw.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-001
+  to: ACC-EUC-1
+  endpoint: acc.euc.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-001
+  to: ACC-EUC-2
+  endpoint: acc.euc.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-002
+  to: ACC-EUC-2
+  endpoint: acc.euc.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-003
+  to: ACC-EUC-3
+  endpoint: acc.euc.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-004
+  to: ACC-EUC-4
+  endpoint: acc.euc.4.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-004
+  to: ACC-EUC-5
+  endpoint: acc.euc.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-005
+  to: ACC-EUC-5
+  endpoint: acc.euc.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-006
+  to: ACC-EUC-1
+  endpoint: acc.euc.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-007
+  to: ACC-EUC-2
+  endpoint: acc.euc.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-007
+  to: ACC-EUC-3
+  endpoint: acc.euc.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUC-008
+  to: ACC-EUC-3
+  endpoint: acc.euc.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-001
+  to: ACC-EUN-1
+  endpoint: acc.eun.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-001
+  to: ACC-EUN-2
+  endpoint: acc.eun.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-002
+  to: ACC-EUN-2
+  endpoint: acc.eun.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-003
+  to: ACC-EUN-3
+  endpoint: acc.eun.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-004
+  to: ACC-EUN-4
+  endpoint: acc.eun.4.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-004
+  to: ACC-EUN-5
+  endpoint: acc.eun.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-005
+  to: ACC-EUN-5
+  endpoint: acc.eun.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-006
+  to: ACC-EUN-1
+  endpoint: acc.eun.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-007
+  to: ACC-EUN-2
+  endpoint: acc.eun.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-007
+  to: ACC-EUN-3
+  endpoint: acc.eun.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-EUN-008
+  to: ACC-EUN-3
+  endpoint: acc.eun.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-001
+  to: ACC-AP-1
+  endpoint: acc.ap.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-001
+  to: ACC-AP-2
+  endpoint: acc.ap.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-002
+  to: ACC-AP-2
+  endpoint: acc.ap.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-003
+  to: ACC-AP-3
+  endpoint: acc.ap.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-004
+  to: ACC-AP-4
+  endpoint: acc.ap.4.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-004
+  to: ACC-AP-5
+  endpoint: acc.ap.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-005
+  to: ACC-AP-5
+  endpoint: acc.ap.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-006
+  to: ACC-AP-1
+  endpoint: acc.ap.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-007
+  to: ACC-AP-2
+  endpoint: acc.ap.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-007
+  to: ACC-AP-3
+  endpoint: acc.ap.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-AP-008
+  to: ACC-AP-3
+  endpoint: acc.ap.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-SA-001
+  to: ACC-SA-1
+  endpoint: acc.sa.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-SA-001
+  to: ACC-SA-2
+  endpoint: acc.sa.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-SA-002
+  to: ACC-SA-2
+  endpoint: acc.sa.2.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-SA-003
+  to: ACC-SA-3
+  endpoint: acc.sa.3.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-SA-004
+  to: ACC-SA-4
+  endpoint: acc.sa.4.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-SA-004
+  to: ACC-SA-5
+  endpoint: acc.sa.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-SA-005
+  to: ACC-SA-5
+  endpoint: acc.sa.5.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: CLIENT-SA-006
+  to: ACC-SA-1
+  endpoint: acc.sa.1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: AGG-USE-DC1
+  to: AGG-EUC-DC1
+  endpoint: agg-euc-dc1.example.com:51820
+  persistent_keepalive: 25
+- from: AGG-USW-DC1
+  to: AGG-AP-DC1
+  endpoint: agg-ap-dc1.example.com:51820
+  persistent_keepalive: 25
+- from: AGG-EUC-DC2
+  to: AGG-AP-DC2
+  endpoint: agg-ap-dc2.example.com:51820
+  persistent_keepalive: 25
+- from: TEST-HIGH-LATENCY
+  to: CORE-ASIA-PACIFIC
+  endpoint: core-asia-pac.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: TEST-PACKET-LOSS
+  to: AGG-SA-DC1
+  endpoint: agg-sa-dc1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: TEST-LOW-BANDWIDTH
+  to: ACC-USE-1
+  endpoint: acc-use-1.example.com:51820
+  allowed_ips:
+  - 0.0.0.0/0
+- from: AGG-USE-DC1
+  to: AGG-USE-DC2
+  endpoint: agg.use.dc2.example.com:51820
+- from: AGG-USE-DC1
+  to: AGG-USE-DC3
+  endpoint: agg.use.dc3.example.com:51820
+- from: AGG-USE-DC2
+  to: AGG-USE-DC3
+  endpoint: agg.use.dc3.example.com:51820
+- from: AGG-USW-DC1
+  to: AGG-USW-DC2
+  endpoint: agg.usw.dc2.example.com:51820
+- from: AGG-USW-DC1
+  to: AGG-USW-DC3
+  endpoint: agg.usw.dc3.example.com:51820
+- from: AGG-USW-DC2
+  to: AGG-USW-DC3
+  endpoint: agg.usw.dc3.example.com:51820
+- from: AGG-EUC-DC1
+  to: AGG-EUC-DC2
+  endpoint: agg.euc.dc2.example.com:51820
+- from: AGG-EUC-DC1
+  to: AGG-EUC-DC3
+  endpoint: agg.euc.dc3.example.com:51820
+- from: AGG-EUC-DC2
+  to: AGG-EUC-DC3
+  endpoint: agg.euc.dc3.example.com:51820
+- from: AGG-EUN-DC1
+  to: AGG-EUN-DC2
+  endpoint: agg.eun.dc2.example.com:51820
+- from: AGG-AP-DC1
+  to: AGG-AP-DC2
+  endpoint: agg.ap.dc2.example.com:51820
+- from: AGG-AP-DC1
+  to: AGG-AP-DC3
+  endpoint: agg.ap.dc3.example.com:51820
+- from: AGG-AP-DC1
+  to: AGG-AP-DC4
+  endpoint: agg.ap.dc4.example.com:51820
+- from: AGG-AP-DC2
+  to: AGG-AP-DC3
+  endpoint: agg.ap.dc3.example.com:51820
+- from: AGG-AP-DC2
+  to: AGG-AP-DC4
+  endpoint: agg.ap.dc4.example.com:51820
+- from: AGG-AP-DC3
+  to: AGG-AP-DC4
+  endpoint: agg.ap.dc4.example.com:51820
+- from: AGG-SA-DC1
+  to: AGG-SA-DC2
+  endpoint: agg.sa.dc2.example.com:51820

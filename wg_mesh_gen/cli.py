@@ -41,7 +41,7 @@ def cli(ctx, verbose, log_file, nodes_file, topo_file, output_dir):
 
 
 @cli.command()
-@click.option('--auto-keys', is_flag=True, default=True,
+@click.option('--auto-keys/--no-auto-keys', default=True,
               help='自动生成缺失的密钥')
 @click.option('--db-path', default='wg_keys.db',
               help='密钥数据库路径')
