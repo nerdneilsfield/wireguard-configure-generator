@@ -10,7 +10,7 @@ from .loader import load_nodes, load_topology, validate_configuration
 from .builder import build_peer_configs
 from .render import ConfigRenderer
 from .visualizer import visualize
-from .storage import KeyStorage
+from .simple_storage import SimpleKeyStorage
 from .crypto import generate_keypair, generate_preshared_key
 
 
@@ -280,7 +280,7 @@ def keys():
 
 @keys.command()
 @click.argument('node_name')
-@click.option('--db-path', default='wg_keys.db', help='密钥数据库路径')
+@click.option('--db-path', default='wg_keys.json', help='密钥存储文件路径')
 @click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
 @click.option('--log-file', help='日志文件路径')
 def generate(node_name, db_path, verbose, log_file):
@@ -298,8 +298,8 @@ def generate(node_name, db_path, verbose, log_file):
         psk = generate_preshared_key()
 
         # Store keys
-        with KeyStorage(db_path) as key_storage:
-            key_storage.store_keypair(node_name, private_key, public_key, psk)
+        key_storage = SimpleKeyStorage(db_path)
+        key_storage.store_keypair(node_name, private_key, public_key)
 
         logger.info(f"密钥对生成完成: {node_name}")
         click.echo(f"Keys generated for node: {node_name}")
@@ -311,7 +311,7 @@ def generate(node_name, db_path, verbose, log_file):
 
 
 @keys.command()
-@click.option('--db-path', default='wg_keys.db', help='密钥数据库路径')
+@click.option('--db-path', default='wg_keys.json', help='密钥存储文件路径')
 @click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
 @click.option('--log-file', help='日志文件路径')
 def list(db_path, verbose, log_file):
@@ -323,15 +323,15 @@ def list(db_path, verbose, log_file):
     logger = get_logger()
 
     try:
-        with KeyStorage(db_path) as key_storage:
-            stored_keys = key_storage.list_keys()
+        key_storage = SimpleKeyStorage(db_path)
+        stored_keys = key_storage.list_keys()
 
-            if stored_keys:
-                click.echo("Stored keys:")
-                for key_name in stored_keys:
-                    click.echo(f"  - {key_name}")
-            else:
-                click.echo("No keys stored.")
+        if stored_keys:
+            click.echo("Stored keys:")
+            for key_info in stored_keys:
+                click.echo(f"  - {key_info['node_name']} (Public: {key_info['public_key'][:8]}...)")
+        else:
+            click.echo("No keys stored.")
 
     except Exception as e:
         logger.error(f"列出密钥失败: {e}")
@@ -340,7 +340,7 @@ def list(db_path, verbose, log_file):
 
 @keys.command()
 @click.argument('node_name')
-@click.option('--db-path', default='wg_keys.db', help='密钥数据库路径')
+@click.option('--db-path', default='wg_keys.json', help='密钥存储文件路径')
 @click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
 @click.option('--log-file', help='日志文件路径')
 def show(node_name, db_path, verbose, log_file):
@@ -352,18 +352,17 @@ def show(node_name, db_path, verbose, log_file):
     logger = get_logger()
 
     try:
-        with KeyStorage(db_path) as key_storage:
-            keys = key_storage.get_keypair(node_name)
+        key_storage = SimpleKeyStorage(db_path)
+        keys = key_storage.get_keypair(node_name)
 
-            if keys:
-                from .utils import mask_sensitive_info
-                click.echo(f"Keys for node: {node_name}")
-                click.echo(f"Public key: {keys['public_key']}")
-                click.echo(f"Private key: {mask_sensitive_info(keys['private_key'])}")
-                if keys['psk']:
-                    click.echo(f"PSK: {mask_sensitive_info(keys['psk'])}")
-            else:
-                click.echo(f"No keys found for node: {node_name}")
+        if keys:
+            from .utils import mask_sensitive_info
+            private_key, public_key = keys
+            click.echo(f"Keys for node: {node_name}")
+            click.echo(f"Public key: {public_key}")
+            click.echo(f"Private key: {mask_sensitive_info(private_key)}")
+        else:
+            click.echo(f"No keys found for node: {node_name}")
 
     except Exception as e:
         logger.error(f"显示密钥失败: {e}")
@@ -372,7 +371,7 @@ def show(node_name, db_path, verbose, log_file):
 
 @keys.command()
 @click.argument('node_name')
-@click.option('--db-path', default='wg_keys.db', help='密钥数据库路径')
+@click.option('--db-path', default='wg_keys.json', help='密钥存储文件路径')
 @click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
 @click.option('--log-file', help='日志文件路径')
 @click.confirmation_option(prompt='Are you sure you want to delete this key?')
@@ -385,14 +384,14 @@ def delete(node_name, db_path, verbose, log_file):
     logger = get_logger()
 
     try:
-        with KeyStorage(db_path) as key_storage:
-            success = key_storage.delete_keypair(node_name)
+        key_storage = SimpleKeyStorage(db_path)
+        success = key_storage.delete_keypair(node_name)
 
-            if success:
-                logger.info(f"密钥已删除: {node_name}")
-                click.echo(f"Keys deleted for node: {node_name}")
-            else:
-                click.echo(f"No keys found for node: {node_name}")
+        if success:
+            logger.info(f"密钥已删除: {node_name}")
+            click.echo(f"Keys deleted for node: {node_name}")
+        else:
+            click.echo(f"No keys found for node: {node_name}")
 
     except Exception as e:
         logger.error(f"删除密钥失败: {e}")

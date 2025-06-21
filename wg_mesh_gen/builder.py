@@ -3,9 +3,9 @@ WireGuard configuration builder
 """
 
 from typing import List, Dict, Any, Optional
-from .loader import load_nodes, load_topology, validate_configuration
+from .validator import validate_and_load_config
 from .crypto import generate_keypair, generate_preshared_key
-from .storage import KeyStorage
+from .simple_storage import SimpleKeyStorage
 from .logger import get_logger
 from .utils import mask_sensitive_info
 
@@ -14,7 +14,7 @@ def build_peer_configs(nodes_file: str,
                       topology_file: str,
                       output_dir: str = "out",
                       auto_generate_keys: bool = True,
-                      db_path: str = "wg_keys.db") -> Dict[str, Any]:
+                      db_path: str = "wg_keys.json") -> Dict[str, Any]:
     """
     Build WireGuard peer configurations.
 
@@ -31,16 +31,12 @@ def build_peer_configs(nodes_file: str,
     logger = get_logger()
     logger.info("开始构建WireGuard配置")
 
-    # Load configurations
-    nodes = load_nodes(nodes_file)
-    peers = load_topology(topology_file)
+    # Load and validate configurations in one step
+    nodes, peers = validate_and_load_config(nodes_file, topology_file)
 
-    # Validate configuration
-    if not validate_configuration(nodes, peers):
-        raise ValueError("配置验证失败")
-
-    # Initialize key storage with context manager
-    with KeyStorage(db_path) as key_storage:
+    # Initialize key storage
+    key_storage = SimpleKeyStorage(db_path)
+    try:
         # Generate or load keys for all nodes
         for node in nodes:
             node_name = node['name']
@@ -50,20 +46,18 @@ def build_peer_configs(nodes_file: str,
 
             if existing_keys:
                 logger.debug(f"使用已存在的密钥对: {node_name}")
-                node['private_key'] = existing_keys['private_key']
-                node['public_key'] = existing_keys['public_key']
-                node['psk'] = existing_keys.get('psk')
+                private_key, public_key = existing_keys
+                node['private_key'] = private_key
+                node['public_key'] = public_key
             elif auto_generate_keys:
                 logger.info(f"为节点 {node_name} 生成新密钥对")
                 private_key, public_key = generate_keypair()
-                psk = generate_preshared_key()
 
                 # Store keys
-                key_storage.store_keypair(node_name, private_key, public_key, psk)
+                key_storage.store_keypair(node_name, private_key, public_key)
 
                 node['private_key'] = private_key
                 node['public_key'] = public_key
-                node['psk'] = psk
 
                 logger.debug(f"节点 {node_name} 密钥生成完成")
                 logger.debug(f"  公钥: {mask_sensitive_info(public_key)}")
@@ -89,6 +83,8 @@ def build_peer_configs(nodes_file: str,
             'peers': peers,
             'output_dir': output_dir
         }
+    finally:
+        key_storage.close()
 
 
 def _build_node_config(node: Dict[str, Any],

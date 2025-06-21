@@ -74,9 +74,10 @@ class TestSmartConfigBuilder:
         
         assert builder.nodes_file == self.nodes_file
         assert builder.topology_file == self.topology_file
-        assert len(builder.nodes) == 4
-        assert len(builder.peers) == 6
-        assert builder.optimizer is not None
+        # 初始化时不加载数据，避免重复加载
+        assert builder.nodes is None
+        assert builder.peers is None
+        assert builder.optimizer is None
         assert builder.logger is not None
     
     def test_build_optimized_configs_basic(self):
@@ -84,7 +85,7 @@ class TestSmartConfigBuilder:
         builder = SmartConfigBuilder(self.nodes_file, self.topology_file)
         
         output_dir = os.path.join(self.temp_dir, 'output')
-        db_path = os.path.join(self.temp_dir, 'test.db')
+        db_path = os.path.join(self.temp_dir, 'test.json')
         
         result = builder.build_optimized_configs(
             output_dir=output_dir,
@@ -234,6 +235,13 @@ class TestSmartConfigBuilder:
     def test_multipath_optimization(self):
         """测试多路径优化"""
         builder = SmartConfigBuilder(self.nodes_file, self.topology_file)
+        
+        # 确保 optimizer 被初始化
+        from wg_mesh_gen.loader import load_nodes, load_topology
+        from wg_mesh_gen.route_optimizer import RouteOptimizer
+        builder.nodes = load_nodes(builder.nodes_file)
+        builder.peers = load_topology(builder.topology_file)
+        builder.optimizer = RouteOptimizer(builder.nodes, builder.peers)
         
         # 创建模拟的构建结果
         mock_build_result = {

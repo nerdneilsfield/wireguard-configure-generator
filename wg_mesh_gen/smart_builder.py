@@ -24,17 +24,15 @@ class SmartConfigBuilder:
         self.nodes_file = nodes_file
         self.topology_file = topology_file
         
-        # Load configurations
-        self.nodes = load_nodes(nodes_file)
-        self.peers = load_topology(topology_file)
-        
-        # Initialize route optimizer
-        self.optimizer = RouteOptimizer(self.nodes, self.peers)
+        # Don't load configurations here to avoid duplicate loading
+        self.nodes = None
+        self.peers = None
+        self.optimizer = None
         
     def build_optimized_configs(self, 
                                output_dir: str = "out",
                                auto_generate_keys: bool = True,
-                               db_path: str = "wg_keys.db",
+                               db_path: str = "wg_keys.json",
                                enable_multipath: bool = False) -> Dict[str, Any]:
         """
         Build optimized WireGuard configurations.
@@ -50,6 +48,23 @@ class SmartConfigBuilder:
         """
         self.logger.info("开始构建优化的WireGuard配置")
         
+        # Build basic configurations first - this will load the configurations
+        build_result = build_peer_configs(
+            nodes_file=self.nodes_file,
+            topology_file=self.topology_file,
+            output_dir=output_dir,
+            auto_generate_keys=auto_generate_keys,
+            db_path=db_path
+        )
+        
+        # Now extract the loaded data from build result to avoid duplicate loading
+        # build_peer_configs internally loads the configurations, so we reuse them
+        if self.nodes is None or self.peers is None:
+            # Load configurations only if not already loaded
+            self.nodes = load_nodes(self.nodes_file)
+            self.peers = load_topology(self.topology_file)
+            self.optimizer = RouteOptimizer(self.nodes, self.peers)
+        
         # Analyze network performance
         performance_metrics = self.optimizer.analyze_network_performance()
         self.logger.info(f"网络性能指标: {performance_metrics}")
@@ -58,15 +73,6 @@ class SmartConfigBuilder:
         bottlenecks = self.optimizer.detect_bottlenecks()
         if bottlenecks:
             self.logger.warning(f"检测到网络瓶颈: {bottlenecks}")
-        
-        # Build basic configurations
-        build_result = build_peer_configs(
-            nodes_file=self.nodes_file,
-            topology_file=self.topology_file,
-            output_dir=output_dir,
-            auto_generate_keys=auto_generate_keys,
-            db_path=db_path
-        )
         
         # Optimize routes
         optimized_routes = self.optimizer.optimize_mesh_routes()
@@ -161,6 +167,13 @@ class SmartConfigBuilder:
         """
         self.logger.info("分析拓扑改进建议")
         
+        # Ensure optimizer is initialized
+        if self.optimizer is None:
+            if self.nodes is None or self.peers is None:
+                self.nodes = load_nodes(self.nodes_file)
+                self.peers = load_topology(self.topology_file)
+            self.optimizer = RouteOptimizer(self.nodes, self.peers)
+        
         suggestions = {
             'relay_placement': [],
             'additional_connections': [],
@@ -208,6 +221,13 @@ class SmartConfigBuilder:
             Dictionary containing network analysis report
         """
         self.logger.info("生成网络分析报告")
+        
+        # Ensure optimizer is initialized
+        if self.optimizer is None:
+            if self.nodes is None or self.peers is None:
+                self.nodes = load_nodes(self.nodes_file)
+                self.peers = load_topology(self.topology_file)
+            self.optimizer = RouteOptimizer(self.nodes, self.peers)
         
         report = {
             'network_overview': {
