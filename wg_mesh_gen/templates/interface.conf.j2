@@ -3,17 +3,22 @@
 
 [Interface]
 PrivateKey = {{ interface.private_key }}
-{% if interface.address %}Address = {{ interface.address }}{% endif %}
-{% if interface.listen_port %}ListenPort = {{ interface.listen_port }}{% endif %}
-{% if interface.dns %}DNS = {{ interface.dns }}{% endif %}
-{% if interface.mtu %}MTU = {{ interface.mtu }}{% endif %}
-
+{% if interface.address %}Address = {{ interface.address }}
+{% endif -%}
+{% if interface.listen_port %}ListenPort = {{ interface.listen_port }}
+{% endif -%}
+{% if interface.dns %}DNS = {{ interface.dns }}
+{% endif -%}
+{% if interface.mtu %}MTU = {{ interface.mtu }}
+{% endif -%}
 {% for peer in peers %}
 [Peer]
 # {{ peer.name }}
 PublicKey = {{ peer.public_key }}
-{% if peer.endpoint %}Endpoint = {{ peer.endpoint }}{% endif %}
-{% if peer.allowed_ips %}AllowedIPs = {{ peer.allowed_ips | join(', ') }}{% endif %}
-{% if peer.persistent_keepalive %}PersistentKeepalive = {{ peer.persistent_keepalive }}{% endif %}
-
+{% if peer.endpoint %}Endpoint = {{ peer.endpoint }}
+{% endif -%}
+{% if peer.allowed_ips %}AllowedIPs = {{ peer.allowed_ips | join(', ') }}
+{% endif -%}
+{% if peer.persistent_keepalive %}PersistentKeepalive = {{ peer.persistent_keepalive }}
+{% endif -%}
 {% endfor %}

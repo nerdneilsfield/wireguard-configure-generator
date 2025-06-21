@@ -1,5 +1,57 @@
 # WireGuard Configure Generator 深度架构分析
 
+## 2025-06-21 18:20:00 - Mock Framework Integration and Template Fix
+
+### Summary
+Created a comprehensive WireGuard mock framework for testing complex topologies and integrated it into the test suite. Also fixed formatting issues in generated configurations.
+
+### Changes Made
+
+1. **Created Super Complex Topology Test Configuration**
+   - 107 nodes across 4 hierarchical layers (core, aggregation, access, client)
+   - 216 connections with redundant paths
+   - Geographic distribution simulation across US, EU, Asia-Pacific, and South America
+   - Special test nodes for high latency, packet loss, and bandwidth constraints
+
+2. **Implemented WireGuard Mock Framework (`wg_mock.py`)**
+   - Complete protocol simulation with handshake states
+   - Asynchronous packet routing with network condition simulation
+   - Connection state tracking and metrics collection
+   - Failure simulation and recovery testing
+   - Path finding and latency calculation
+   - Supports testing without real WireGuard interfaces
+
+3. **Fixed Jinja2 Template Formatting**
+   - Resolved issue where Endpoint and PersistentKeepalive appeared on same line
+   - Added proper line breaks between WireGuard configuration directives
+   - Ensures clean, readable configuration output
+
+4. **Integrated Mock Framework into Test Suite**
+   - Created `test_integration_with_mock.py` with 6 comprehensive test cases
+   - Created `test_builder_with_mock.py` for builder-specific mock tests
+   - Tests cover connectivity, failover, performance metrics, and large topology handling
+   - All integration tests passing successfully
+
+5. **Updated Project Configuration**
+   - Added pytest-asyncio to dependencies for async test support
+   - Fixed pyproject.toml to properly configure package discovery
+   - Resolved module import issues for testing
+
+### Testing Results
+- Mock framework successfully simulates WireGuard network behavior
+- Integration tests validate configuration generation and network connectivity
+- Large topology test (107 nodes, 216 connections) completes in under 15 seconds
+- Template formatting produces clean, properly formatted WireGuard configurations
+
+### Known Issues
+- Key storage file corruption issue persists (UTF-8 decode error)
+- Some asyncio cleanup warnings in tests (tasks not properly cancelled)
+
+### Next Steps
+- Fix key storage corruption issue
+- Improve asyncio task cleanup in mock framework
+- Add more edge case tests for the mock framework
+
 ## 2025-06-21 16:20:00 - WireGuard Mock Framework Implementation
 
 ### Summary
