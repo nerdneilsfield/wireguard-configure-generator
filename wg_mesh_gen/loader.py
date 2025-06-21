@@ -3,7 +3,7 @@ Configuration file loaders for WireGuard mesh generator
 """
 
 from typing import List, Dict, Any
-from .utils import load_config
+from .file_utils import load_config
 from .logger import get_logger
 
 

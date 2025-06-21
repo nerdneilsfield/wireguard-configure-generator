@@ -1,5 +1,48 @@
 # WireGuard Configure Generator 深度架构分析
 
+## 2025-06-21 15:56:51 - Additional Improvements
+
+### Summary of Changes
+
+Completed four additional improvements to enhance code quality and maintainability:
+
+1. **Added comprehensive CLI keys command tests**
+   - Created test_cli_keys.py with 11 test cases
+   - Covers all key management operations (generate, list, show, delete)
+   - Tests edge cases and error handling
+   - All tests passing
+
+2. **Optimized bidirectional peer connection handling in builder.py**
+   - Created `_build_peer_map()` function to preprocess peer connections
+   - Eliminated duplicate traversal of peer list
+   - Added `_build_node_config_optimized()` using the peer map
+   - Improved performance for large topologies
+
+3. **Refactored utils.py into focused modules**
+   - Created file_utils.py for file operations (load/save JSON/YAML)
+   - Created data_utils.py for data processing (validation, list operations)
+   - Created string_utils.py for string operations (sanitization, masking)
+   - Updated all imports across the codebase
+   - Better separation of concerns
+
+4. **Extracted magic numbers in visualizer.py to constants**
+   - Added constants for network size thresholds
+   - Added constants for layout parameters
+   - Added constants for visual styling (scales, sizes, etc.)
+   - Improved code readability and maintainability
+
+### Files Modified
+- `tests/test_cli_keys.py` - New comprehensive test suite
+- `wg_mesh_gen/builder.py` - Optimized peer connection handling
+- `wg_mesh_gen/file_utils.py` - New module for file operations
+- `wg_mesh_gen/data_utils.py` - New module for data processing
+- `wg_mesh_gen/string_utils.py` - New module for string operations
+- `wg_mesh_gen/visualizer.py` - Extracted magic numbers to constants
+- Multiple files updated for new imports
+
+### Test Results
+All 159 tests passing successfully.
+
 ## 2025-06-21 15:41:10 - Major Architecture Refactoring
 
 ### Summary of Changes

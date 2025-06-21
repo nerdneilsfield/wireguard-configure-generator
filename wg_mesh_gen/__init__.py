@@ -16,7 +16,7 @@ from .cli import main
 from .builder import build_peer_configs
 from .visualizer import visualize
 from .loader import load_nodes, load_topology
-from .utils import load_config, save_yaml
+from .file_utils import load_config, save_yaml
 
 __all__ = [
     "main",

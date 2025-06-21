@@ -356,7 +356,7 @@ def show(node_name, db_path, verbose, log_file):
         keys = key_storage.get_keypair(node_name)
 
         if keys:
-            from .utils import mask_sensitive_info
+            from .string_utils import mask_sensitive_info
             private_key, public_key = keys
             click.echo(f"Keys for node: {node_name}")
             click.echo(f"Public key: {public_key}")

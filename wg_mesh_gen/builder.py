@@ -3,11 +3,12 @@ WireGuard configuration builder
 """
 
 from typing import List, Dict, Any, Optional
+from collections import defaultdict
 from .validator import validate_and_load_config
 from .crypto import generate_keypair, generate_preshared_key
 from .simple_storage import SimpleKeyStorage
 from .logger import get_logger
-from .utils import mask_sensitive_info
+from .string_utils import mask_sensitive_info
 
 
 def build_peer_configs(nodes_file: str,
@@ -65,12 +66,15 @@ def build_peer_configs(nodes_file: str,
                 logger.error(f"节点 {node_name} 缺少密钥且未启用自动生成")
                 raise ValueError(f"Node {node_name} missing keys and auto-generation disabled")
 
+        # Build peer map for efficient lookup
+        peer_map = _build_peer_map(peers)
+        
         # Build peer configurations
         configs = {}
 
         for node in nodes:
             node_name = node['name']
-            config = _build_node_config(node, nodes, peers)
+            config = _build_node_config_optimized(node, nodes, peer_map)
             configs[node_name] = config
 
             logger.debug(f"节点 {node_name} 配置构建完成")
@@ -146,4 +150,90 @@ def _build_node_config(node: Dict[str, Any],
         'peers': node_peers
     }
 
+    return config
+
+
+def _build_peer_map(peers: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Build a bidirectional peer map for efficient lookup.
+    
+    Args:
+        peers: List of peer connections
+        
+    Returns:
+        Dictionary mapping node names to their peer connections
+    """
+    peer_map = defaultdict(list)
+    
+    for peer in peers:
+        from_node = peer['from']
+        to_node = peer['to']
+        
+        # Add outgoing connection
+        peer_map[from_node].append({
+            'node': to_node,
+            'direction': 'outgoing',
+            'endpoint': peer.get('endpoint'),
+            'allowed_ips': peer.get('allowed_ips', []),
+            'persistent_keepalive': peer.get('persistent_keepalive')
+        })
+        
+        # Add incoming connection
+        peer_map[to_node].append({
+            'node': from_node,
+            'direction': 'incoming',
+            'endpoint': None,  # Incoming connections don't have endpoints
+            'allowed_ips': peer.get('allowed_ips', []),
+            'persistent_keepalive': peer.get('persistent_keepalive')
+        })
+    
+    return dict(peer_map)
+
+
+def _build_node_config_optimized(node: Dict[str, Any],
+                                all_nodes: List[Dict[str, Any]],
+                                peer_map: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+    """
+    Build configuration for a single node using optimized peer map.
+    
+    Args:
+        node: Node configuration
+        all_nodes: All node configurations
+        peer_map: Pre-built bidirectional peer map
+        
+    Returns:
+        Node configuration with peer information
+    """
+    node_name = node['name']
+    
+    # Create node lookup
+    node_lookup = {n['name']: n for n in all_nodes}
+    
+    # Get peers from map
+    node_peers = []
+    peer_connections = peer_map.get(node_name, [])
+    
+    for peer_conn in peer_connections:
+        peer_node = node_lookup[peer_conn['node']]
+        peer_config = {
+            'name': peer_node['name'],
+            'public_key': peer_node['public_key'],
+            'endpoint': peer_conn['endpoint'],
+            'allowed_ips': peer_conn['allowed_ips'],
+            'persistent_keepalive': peer_conn['persistent_keepalive']
+        }
+        node_peers.append(peer_config)
+    
+    # Build final configuration
+    config = {
+        'interface': {
+            'private_key': node['private_key'],
+            'address': node.get('wireguard_ip'),
+            'listen_port': node.get('listen_port'),
+            'dns': node.get('dns'),
+            'mtu': node.get('mtu')
+        },
+        'peers': node_peers
+    }
+    
     return config

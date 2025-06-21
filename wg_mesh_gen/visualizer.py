@@ -5,8 +5,58 @@ import warnings
 import math
 from collections import defaultdict
 from wg_mesh_gen.loader import load_nodes, load_topology
-from wg_mesh_gen.utils import ensure_dir
+from wg_mesh_gen.file_utils import ensure_dir
 from wg_mesh_gen.logger import get_logger
+
+# Layout constants
+SMALL_NETWORK_THRESHOLD = 10
+MEDIUM_NETWORK_THRESHOLD = 30
+LARGE_NETWORK_THRESHOLD = 50
+XLARGE_NETWORK_THRESHOLD = 70
+
+# Base parameters
+BASE_FIGURE_SIZE = 12
+BASE_NODE_SIZE = 1000
+BASE_FONT_SIZE = 10
+BASE_EDGE_FONT_SIZE = 8
+
+# Layout-specific parameters
+SMALL_NETWORK_K = 1
+SMALL_NETWORK_ITERATIONS = 50
+MEDIUM_NETWORK_K = 2
+MEDIUM_NETWORK_ITERATIONS = 100
+LARGE_NETWORK_K = 3
+LARGE_NETWORK_ITERATIONS = 150
+XLARGE_NETWORK_K = 4
+XLARGE_NETWORK_ITERATIONS = 200
+
+# Scale factors
+SMALL_NETWORK_SCALE = 1.0
+MEDIUM_NETWORK_SCALE = 1.2
+LARGE_NETWORK_SCALE = 1.5
+XLARGE_NETWORK_SCALE = 2.0
+
+# Hierarchical layout scales
+RELAY_NODE_SCALE = 0.5
+GATEWAY_NODE_SCALE = 1.5
+CLIENT_NODE_SCALE = 2.5
+
+# Other constants
+FIGURE_HEIGHT_RATIO = 0.8
+MIN_NODE_SIZE = 200
+MIN_FONT_SIZE = 6
+MIN_EDGE_FONT_SIZE = 4
+NODE_SIZE_DIVISOR = 10
+FONT_SIZE_DIVISOR = 10
+DEFAULT_SEED = 42
+
+# Edge styling constants
+MIN_EDGE_ALPHA = 0.3
+MAX_EDGE_ALPHA = 0.8
+EDGE_ALPHA_DIVISOR = 500
+MIN_EDGE_WIDTH = 0.5
+MAX_EDGE_WIDTH = 2
+EDGE_WIDTH_DIVISOR = 200
 
 
 def sanitize_node_name(name: str) -> str:
@@ -50,48 +100,42 @@ def calculate_layout_params(num_nodes: int, num_edges: int):
     Returns:
         包含各种布局参数的字典
     """
-    # 基础参数
-    base_figure_size = 12
-    base_node_size = 1000
-    base_font_size = 10
-    base_edge_font_size = 8
-    
     # 根据节点数量调整参数
-    if num_nodes <= 10:
+    if num_nodes <= SMALL_NETWORK_THRESHOLD:
         # 小型网络
-        scale_factor = 1.0
-        layout_k = 1
-        iterations = 50
-    elif num_nodes <= 30:
+        scale_factor = SMALL_NETWORK_SCALE
+        layout_k = SMALL_NETWORK_K
+        iterations = SMALL_NETWORK_ITERATIONS
+    elif num_nodes <= MEDIUM_NETWORK_THRESHOLD:
         # 中型网络
-        scale_factor = 1.2
-        layout_k = 2
-        iterations = 100
-    elif num_nodes <= 70:
+        scale_factor = MEDIUM_NETWORK_SCALE
+        layout_k = MEDIUM_NETWORK_K
+        iterations = MEDIUM_NETWORK_ITERATIONS
+    elif num_nodes <= XLARGE_NETWORK_THRESHOLD:
         # 大型网络
-        scale_factor = 1.5
-        layout_k = 3
-        iterations = 150
+        scale_factor = LARGE_NETWORK_SCALE
+        layout_k = LARGE_NETWORK_K
+        iterations = LARGE_NETWORK_ITERATIONS
     else:
         # 超大型网络
-        scale_factor = 2.0
-        layout_k = 4
-        iterations = 200
+        scale_factor = XLARGE_NETWORK_SCALE
+        layout_k = XLARGE_NETWORK_K
+        iterations = XLARGE_NETWORK_ITERATIONS
     
     # 计算画布大小 - 根据节点数量动态调整
-    figure_width = base_figure_size * scale_factor
-    figure_height = base_figure_size * scale_factor * 0.8
+    figure_width = BASE_FIGURE_SIZE * scale_factor
+    figure_height = BASE_FIGURE_SIZE * scale_factor * FIGURE_HEIGHT_RATIO
     
     # 节点大小 - 节点越多，单个节点越小
-    node_size = max(200, base_node_size / math.sqrt(num_nodes / 10))
+    node_size = max(MIN_NODE_SIZE, BASE_NODE_SIZE / math.sqrt(num_nodes / NODE_SIZE_DIVISOR))
     
     # 字体大小 - 根据节点数量和画布大小调整
-    font_size = max(6, base_font_size - math.log10(max(1, num_nodes / 10)))
-    edge_font_size = max(4, base_edge_font_size - math.log10(max(1, num_nodes / 10)))
+    font_size = max(MIN_FONT_SIZE, BASE_FONT_SIZE - math.log10(max(1, num_nodes / FONT_SIZE_DIVISOR)))
+    edge_font_size = max(MIN_EDGE_FONT_SIZE, BASE_EDGE_FONT_SIZE - math.log10(max(1, num_nodes / FONT_SIZE_DIVISOR)))
     
     # 边的透明度和宽度
-    edge_alpha = max(0.3, 0.8 - (num_edges / 500))
-    edge_width = max(0.5, 2 - (num_edges / 200))
+    edge_alpha = max(MIN_EDGE_ALPHA, MAX_EDGE_ALPHA - (num_edges / EDGE_ALPHA_DIVISOR))
+    edge_width = max(MIN_EDGE_WIDTH, MAX_EDGE_WIDTH - (num_edges / EDGE_WIDTH_DIVISOR))
     
     return {
         'figure_size': (figure_width, figure_height),
@@ -125,14 +169,14 @@ def choose_best_layout(G, num_nodes: int, layout_preference: str = 'auto'):
         return get_layout(G, layout_preference, num_nodes)
     
     # 自动选择布局
-    if num_nodes <= 15:
+    if num_nodes <= SMALL_NETWORK_THRESHOLD + 5:
         # 小型网络：使用circular或shell布局，更清晰
         logger.info("使用circular布局（小型网络）")
         return nx.circular_layout(G)
-    elif num_nodes <= 50:
+    elif num_nodes <= LARGE_NETWORK_THRESHOLD:
         # 中型网络：使用spring布局
         logger.info("使用spring布局（中型网络）")
-        return nx.spring_layout(G, seed=42, k=2, iterations=100)
+        return nx.spring_layout(G, seed=DEFAULT_SEED, k=MEDIUM_NETWORK_K, iterations=MEDIUM_NETWORK_ITERATIONS)
     else:
         # 大型网络：使用分层布局或force-directed布局
         logger.info("使用分层spring布局（大型网络）")
@@ -141,7 +185,7 @@ def choose_best_layout(G, num_nodes: int, layout_preference: str = 'auto'):
             return create_hierarchical_layout(G)
         except:
             # 回退到标准spring布局
-            return nx.spring_layout(G, seed=42, k=3, iterations=150)
+            return nx.spring_layout(G, seed=DEFAULT_SEED, k=LARGE_NETWORK_K, iterations=LARGE_NETWORK_ITERATIONS)
 
 
 def create_hierarchical_layout(G):
@@ -157,26 +201,26 @@ def create_hierarchical_layout(G):
     
     # 中继节点放在中心
     if relay_nodes:
-        relay_pos = nx.circular_layout(relay_nodes, scale=0.5)
+        relay_pos = nx.circular_layout(relay_nodes, scale=RELAY_NODE_SCALE)
         for node, position in relay_pos.items():
             pos[node] = position
     
     # 网关节点放在中间层
     if gateway_nodes:
-        gateway_pos = nx.circular_layout(gateway_nodes, scale=1.5)
+        gateway_pos = nx.circular_layout(gateway_nodes, scale=GATEWAY_NODE_SCALE)
         for node, position in gateway_pos.items():
             pos[node] = position
     
     # 客户端节点放在外层
     if client_nodes:
-        client_pos = nx.circular_layout(client_nodes, scale=2.5)
+        client_pos = nx.circular_layout(client_nodes, scale=CLIENT_NODE_SCALE)
         for node, position in client_pos.items():
             pos[node] = position
     
     # 如果某些角色没有节点，使用spring布局填充
     remaining_nodes = set(G.nodes()) - set(pos.keys())
     if remaining_nodes:
-        remaining_pos = nx.spring_layout(G.subgraph(remaining_nodes), seed=42)
+        remaining_pos = nx.spring_layout(G.subgraph(remaining_nodes), seed=DEFAULT_SEED)
         pos.update(remaining_pos)
     
     return pos

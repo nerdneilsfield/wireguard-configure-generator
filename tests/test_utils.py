@@ -7,10 +7,14 @@ import tempfile
 import os
 import json
 import yaml
-from wg_mesh_gen.utils import (
-    ensure_dir, load_json, load_yaml, load_config, save_yaml,
-    write_file, validate_schema, sanitize_filename, flatten, chunk_list,
-    mask_sensitive_info
+from wg_mesh_gen.file_utils import (
+    ensure_dir, load_json, load_yaml, load_config, save_yaml, write_file
+)
+from wg_mesh_gen.data_utils import (
+    validate_schema, flatten, chunk_list
+)
+from wg_mesh_gen.string_utils import (
+    sanitize_filename, mask_sensitive_info
 )
 
 
@@ -189,8 +193,8 @@ class TestUtilityFunctions:
             ("file with spaces", "file with spaces"),
             ("file.with.dots", "file.with.dots"),
             ("file_with_underscores", "file_with_underscores"),
-            ("file/with\\invalid:chars", "filewithinvalidchars"),  # 移除无效字符
-            ("file<>|?*chars", "filechars"),  # 移除无效字符
+            ("file/with\\invalid:chars", "file_with_invalid_chars"),  # 替换无效字符为下划线
+            ("file<>|?*chars", "file_____chars"),  # 替换无效字符为下划线
             ("   leading_trailing_spaces   ", "leading_trailing_spaces"),  # 移除前后空格
         ]
 
@@ -254,11 +258,17 @@ class TestUtilityFunctions:
         assert mask_sensitive_info("abcdef") == "******"
         
         # 测试短字符串
-        assert mask_sensitive_info("abcdefg") == "a...g"
-        assert mask_sensitive_info("abcdefgh") == "a...h"
-        assert mask_sensitive_info("abcdefghi") == "a...i"
-        assert mask_sensitive_info("abcdefghij") == "a...j"
-        assert mask_sensitive_info("abcdefghijk") == "a...k"
+        # 对于长度 <= show_chars * 2 + 3 的字符串，动态调整显示字符数
+        # 7个字符: (7-3)//2 = 2，显示前后2个
+        assert mask_sensitive_info("abcdefg") == "ab...fg"
+        # 8个字符: (8-3)//2 = 2，显示前后2个
+        assert mask_sensitive_info("abcdefgh") == "ab...gh"
+        # 9个字符: (9-3)//2 = 3，显示前后3个
+        assert mask_sensitive_info("abcdefghi") == "abc...ghi"
+        # 10个字符: (10-3)//2 = 3，显示前后3个
+        assert mask_sensitive_info("abcdefghij") == "abc...hij"
+        # 11个字符: (11-3)//2 = 4，但默认show_chars=4，所以显示前后4个
+        assert mask_sensitive_info("abcdefghijk") == "abcd...hijk"
         
         # 测试正常长度字符串
         assert mask_sensitive_info("abcdefghijklmnop") == "abcd...mnop"

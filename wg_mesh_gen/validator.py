@@ -3,7 +3,8 @@ Unified validation module for configuration files
 """
 
 from typing import Dict, List, Any, Tuple
-from .utils import load_config, validate_schema
+from .file_utils import load_config
+from .data_utils import validate_schema
 from .logger import get_logger
 
 

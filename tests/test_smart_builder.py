@@ -42,12 +42,12 @@ class TestSmartConfigBuilder:
         
         self.test_topology = {
             "peers": [
-                {"from": "A", "to": "B", "weight": 1},
-                {"from": "B", "to": "C", "weight": 1},
-                {"from": "C", "to": "A", "weight": 1},
-                {"from": "A", "to": "D", "weight": 2},
-                {"from": "B", "to": "D", "weight": 2},
-                {"from": "C", "to": "D", "weight": 2}
+                {"from": "A", "to": "B"},
+                {"from": "B", "to": "C"},
+                {"from": "C", "to": "A"},
+                {"from": "A", "to": "D"},
+                {"from": "B", "to": "D"},
+                {"from": "C", "to": "D"}
             ]
         }
         

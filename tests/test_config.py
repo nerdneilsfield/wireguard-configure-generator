@@ -8,7 +8,8 @@ import os
 import json
 import yaml
 from pathlib import Path
-from wg_mesh_gen.utils import load_config, save_yaml, validate_schema
+from wg_mesh_gen.file_utils import load_config, save_yaml
+from wg_mesh_gen.data_utils import validate_schema
 from wg_mesh_gen.loader import load_nodes, load_topology
 
 
