@@ -97,19 +97,31 @@ class MockWireGuardNode:
         
         self.logger = get_logger()
         self.running = False
+        self._tasks: List[asyncio.Task] = []
     
     async def start(self):
         """Start the mock node"""
         self.running = True
         self.logger.debug(f"Mock node {self.name} started")
         
-        # Start background tasks
-        asyncio.create_task(self._process_inbound())
-        asyncio.create_task(self._process_keepalive())
+        # Start background tasks and track them
+        self._tasks.append(asyncio.create_task(self._process_inbound()))
+        self._tasks.append(asyncio.create_task(self._process_keepalive()))
     
     async def stop(self):
         """Stop the mock node"""
         self.running = False
+        
+        # Cancel all tasks
+        for task in self._tasks:
+            if not task.done():
+                task.cancel()
+        
+        # Wait for tasks to finish cancellation
+        if self._tasks:
+            await asyncio.gather(*self._tasks, return_exceptions=True)
+        
+        self._tasks.clear()
         self.logger.debug(f"Mock node {self.name} stopped")
     
     async def connect_to_peer(self, peer_name: str, peer_public_key: str):
@@ -258,6 +270,7 @@ class MockWireGuardNetwork:
         # Packet routing
         self.packet_queue: asyncio.Queue = asyncio.Queue()
         self.running = False
+        self._router_task: Optional[asyncio.Task] = None
     
     def _initialize_network(self):
         """Initialize the network topology"""
@@ -341,8 +354,8 @@ class MockWireGuardNetwork:
         for node in self.mock_nodes.values():
             await node.start()
         
-        # Start packet router
-        asyncio.create_task(self._route_packets())
+        # Start packet router and track the task
+        self._router_task = asyncio.create_task(self._route_packets())
         
         # Establish connections based on topology
         await self._establish_connections()
@@ -351,9 +364,19 @@ class MockWireGuardNetwork:
         """Stop the network simulation"""
         self.running = False
         
+        # Cancel router task
+        if self._router_task and not self._router_task.done():
+            self._router_task.cancel()
+            try:
+                await self._router_task
+            except asyncio.CancelledError:
+                pass
+        
         # Stop all nodes
-        for node in self.mock_nodes.values():
-            await node.stop()
+        await asyncio.gather(
+            *[node.stop() for node in self.mock_nodes.values()],
+            return_exceptions=True
+        )
         
         self.logger.info("Mock WireGuard network simulation stopped")
     

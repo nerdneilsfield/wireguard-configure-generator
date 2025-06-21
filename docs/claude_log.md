@@ -493,3 +493,45 @@ else:
 3. **代码质量**：存在冗余代码、魔法数字、职责不清的模块
 
 通过实施上述改进，可以使代码更清晰、更高效、更易维护。优先级应该放在修复重复加载问题和补充关键功能的测试上。
+
+---
+
+## 2025-06-21 18:38 - Fixed AllowedIPs Routing Issues
+
+### Critical Fix: AllowedIPs Handling
+
+1. **Fixed Bidirectional Connection Issue**
+   - Problem: The `_build_peer_map` function was automatically creating reverse entries with incorrect AllowedIPs
+   - When A→B had allowed_ips=[10.96.0.3/32], it incorrectly created B→A with the same allowed_ips
+   - Solution: Removed automatic bidirectional entry creation
+   - Each direction must now be explicitly defined in the topology
+
+2. **Optimized AllowedIPs to Avoid Overlaps**
+   - Problem: Relay nodes had AllowedIPs=10.96.0.0/16 which overlapped with direct peer routes
+   - This created routing ambiguity in WireGuard
+   - Solution: Use specific, non-overlapping subnets:
+     ```yaml
+     # Direct connections use specific IPs
+     allowed_ips: [10.96.0.3/32]
+     
+     # Relay connections only include non-local subnets
+     allowed_ips: [10.96.0.1/32, 10.96.4.0/24]
+     ```
+
+3. **Created Best Practices Documentation**
+   - Added comprehensive guide: `docs/allowed_ips_best_practices.md`
+   - Covers common pitfalls and solutions
+   - Includes examples for mesh and hub-and-spoke topologies
+
+### Technical Details
+
+The fix involved modifying `wg_mesh_gen/builder.py`:
+```python
+# Old behavior: automatically created reverse entries
+# New behavior: only creates entries as explicitly defined
+def _build_peer_map(peers: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    # Only create peer entry for the 'from' node
+    # No automatic reverse entry creation
+```
+
+This ensures that AllowedIPs are correctly configured for each direction of communication.

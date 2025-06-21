@@ -155,7 +155,11 @@ def _build_node_config(node: Dict[str, Any],
 
 def _build_peer_map(peers: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
     """
-    Build a bidirectional peer map for efficient lookup.
+    Build a peer map for efficient lookup, avoiding duplicates.
+    
+    IMPORTANT: This function only creates peer entries as explicitly defined in the topology.
+    It does NOT automatically create bidirectional entries because AllowedIPs have different
+    meanings in each direction.
     
     Args:
         peers: List of peer connections
@@ -163,31 +167,42 @@ def _build_peer_map(peers: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any
     Returns:
         Dictionary mapping node names to their peer connections
     """
-    peer_map = defaultdict(list)
+    peer_map = defaultdict(lambda: defaultdict(dict))
     
     for peer in peers:
         from_node = peer['from']
         to_node = peer['to']
         
-        # Add outgoing connection
-        peer_map[from_node].append({
-            'node': to_node,
-            'direction': 'outgoing',
-            'endpoint': peer.get('endpoint'),
-            'allowed_ips': peer.get('allowed_ips', []),
-            'persistent_keepalive': peer.get('persistent_keepalive')
-        })
+        # Only create peer entry for the 'from' node
+        # This represents an outgoing connection from 'from_node' to 'to_node'
+        if to_node not in peer_map[from_node]:
+            peer_map[from_node][to_node] = {
+                'node': to_node,
+                'direction': 'outgoing',
+                'endpoint': peer.get('endpoint'),
+                'allowed_ips': peer.get('allowed_ips', []),
+                'persistent_keepalive': peer.get('persistent_keepalive')
+            }
+        else:
+            # Merge allowed_ips if peer already exists
+            existing = peer_map[from_node][to_node]
+            existing_ips = set(existing.get('allowed_ips', []))
+            new_ips = set(peer.get('allowed_ips', []))
+            existing['allowed_ips'] = list(existing_ips | new_ips)
+            # Update other fields if they're not None/empty in the new peer
+            if peer.get('persistent_keepalive'):
+                existing['persistent_keepalive'] = peer.get('persistent_keepalive')
         
-        # Add incoming connection
-        peer_map[to_node].append({
-            'node': from_node,
-            'direction': 'incoming',
-            'endpoint': None,  # Incoming connections don't have endpoints
-            'allowed_ips': peer.get('allowed_ips', []),
-            'persistent_keepalive': peer.get('persistent_keepalive')
-        })
+        # NOTE: We do NOT automatically create a reverse entry for 'to_node'
+        # If bidirectional communication is needed, it must be explicitly defined
+        # in the topology with appropriate allowed_ips for each direction
     
-    return dict(peer_map)
+    # Convert to the expected format
+    result = {}
+    for node, peers_dict in peer_map.items():
+        result[node] = list(peers_dict.values())
+    
+    return result
 
 
 def _build_node_config_optimized(node: Dict[str, Any],
@@ -215,21 +230,42 @@ def _build_node_config_optimized(node: Dict[str, Any],
     
     for peer_conn in peer_connections:
         peer_node = node_lookup[peer_conn['node']]
+        
+        # Determine endpoint
+        endpoint = None
+        if peer_conn['direction'] == 'outgoing' and peer_node.get('endpoints'):
+            # For outgoing connections, use the first endpoint from the target node
+            endpoint = peer_node['endpoints'][0] if peer_node['endpoints'] else None
+        else:
+            # For incoming connections or if no endpoint specified on peer
+            endpoint = peer_conn.get('endpoint')
+        
         peer_config = {
             'name': peer_node['name'],
             'public_key': peer_node['public_key'],
-            'endpoint': peer_conn['endpoint'],
-            'allowed_ips': peer_conn['allowed_ips'],
-            'persistent_keepalive': peer_conn['persistent_keepalive']
+            'endpoint': endpoint,
+            'allowed_ips': peer_conn.get('allowed_ips', []),
+            'persistent_keepalive': peer_conn.get('persistent_keepalive')
         }
         node_peers.append(peer_config)
+    
+    # Extract listen_port from endpoints if not explicitly set
+    listen_port = node.get('listen_port')
+    if not listen_port and node.get('endpoints'):
+        # Try to extract port from first endpoint
+        first_endpoint = node['endpoints'][0]
+        if ':' in first_endpoint:
+            try:
+                listen_port = int(first_endpoint.split(':')[-1])
+            except ValueError:
+                pass
     
     # Build final configuration
     config = {
         'interface': {
             'private_key': node['private_key'],
             'address': node.get('wireguard_ip'),
-            'listen_port': node.get('listen_port'),
+            'listen_port': listen_port,
             'dns': node.get('dns'),
             'mtu': node.get('mtu')
         },

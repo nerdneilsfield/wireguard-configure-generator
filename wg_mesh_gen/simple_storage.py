@@ -35,7 +35,7 @@ class SimpleKeyStorage:
     def _load_data(self) -> Dict[str, Dict[str, str]]:
         """Load data from JSON file with file locking"""
         try:
-            with open(self.storage_path, 'r') as f:
+            with open(self.storage_path, 'r', encoding='utf-8') as f:
                 # Acquire shared lock for reading
                 fcntl.flock(f.fileno(), fcntl.LOCK_SH)
                 try:
@@ -43,8 +43,19 @@ class SimpleKeyStorage:
                 finally:
                     fcntl.flock(f.fileno(), fcntl.LOCK_UN)
                 return data
-        except (json.JSONDecodeError, FileNotFoundError):
-            self.logger.warning(f"无法读取存储文件，返回空数据")
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            self.logger.warning(f"无法读取存储文件: {e}，返回空数据")
+            return {}
+        except UnicodeDecodeError as e:
+            self.logger.error(f"存储文件损坏: {e}")
+            # Try to backup the corrupted file and create a new one
+            backup_path = self.storage_path.with_suffix('.corrupted')
+            try:
+                self.storage_path.rename(backup_path)
+                self.logger.warning(f"已将损坏文件备份至: {backup_path}")
+            except Exception:
+                pass
+            # Return empty data and let the system recreate the file
             return {}
     
     def _save_data(self, data: Dict[str, Dict[str, str]]):
@@ -52,7 +63,7 @@ class SimpleKeyStorage:
         try:
             # Write to temporary file first
             temp_path = self.storage_path.with_suffix('.tmp')
-            with open(temp_path, 'w') as f:
+            with open(temp_path, 'w', encoding='utf-8') as f:
                 # Acquire exclusive lock for writing
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 try:
