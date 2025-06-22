@@ -2,7 +2,7 @@ Metadata-Version: 2.4
 Name: wireguard-configure-generator-new
 Version: 0.1.0
 Summary: Add your description here
-Requires-Python: >=3.12
+Requires-Python: >=3.11
 Description-Content-Type: text/markdown
 Requires-Dist: click>=8.2.1
 Requires-Dist: cryptography>=45.0.2

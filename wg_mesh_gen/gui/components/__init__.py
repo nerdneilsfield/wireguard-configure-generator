@@ -11,6 +11,8 @@ from .toolbar import ToolBar
 from .menubar import MenuBar
 from .file_upload import FileUploadComponent
 from .export_dialog import ExportDialog
+from .help_dialog import HelpDialog
+from .status_bar import StatusBar
 
 __all__ = [
     'CytoscapeWidget',
@@ -20,4 +22,6 @@ __all__ = [
     'MenuBar',
     'FileUploadComponent',
     'ExportDialog',
+    'HelpDialog',
+    'StatusBar',
 ]

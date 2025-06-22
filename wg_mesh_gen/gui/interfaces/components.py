@@ -502,3 +502,195 @@ class IExportDialog(IComponent):
     def on_cancel(self, handler: Callable[[], None]) -> None:
         """Register cancel handler."""
         pass
+
+
+class IStatusBar(IComponent):
+    """Interface for status bar component."""
+    
+    @abstractmethod
+    def set_status(self, message: str, status_type: str = 'info') -> None:
+        """
+        Set status message.
+        
+        Args:
+            message: Status message
+            status_type: Type of status (info, success, warning, error)
+        """
+        pass
+    
+    @abstractmethod
+    def set_validation_status(self, is_valid: bool, error_count: int = 0) -> None:
+        """
+        Set validation status.
+        
+        Args:
+            is_valid: Whether configuration is valid
+            error_count: Number of validation errors
+        """
+        pass
+    
+    @abstractmethod
+    def set_last_action(self, action: str) -> None:
+        """
+        Set last action text.
+        
+        Args:
+            action: Description of last action
+        """
+        pass
+    
+    @abstractmethod
+    def show_progress(self, message: str, progress: Optional[float] = None) -> None:
+        """
+        Show progress indicator.
+        
+        Args:
+            message: Progress message
+            progress: Progress value (0-1) or None for indeterminate
+        """
+        pass
+    
+    @abstractmethod
+    def hide_progress(self) -> None:
+        """Hide progress indicator."""
+        pass
+    
+    @abstractmethod
+    def update_statistics(self, stats: Dict[str, Any]) -> None:
+        """
+        Update additional statistics.
+        
+        Args:
+            stats: Dictionary of statistics to display
+        """
+        pass
+
+
+# Dialog components (for popup dialogs, wizards, etc.)
+class IDialog(IComponent):
+    """Base interface for dialog components."""
+    
+    @abstractmethod
+    def show(self) -> None:
+        """Show the dialog."""
+        pass
+    
+    @abstractmethod
+    def close(self) -> None:
+        """Close the dialog."""
+        pass
+    
+    @abstractmethod
+    def on_close(self, handler: Callable[[], None]) -> None:
+        """
+        Register close handler.
+        
+        Args:
+            handler: Callback when dialog is closed
+        """
+        pass
+
+
+class IToolBar(IComponent):
+    """Interface for toolbar component."""
+    
+    @abstractmethod
+    def add_button(self, action: str, label: str, icon: Optional[str] = None,
+                   tooltip: Optional[str] = None) -> None:
+        """
+        Add a button to the toolbar.
+        
+        Args:
+            action: Action identifier
+            label: Button label
+            icon: Optional icon name
+            tooltip: Optional tooltip text
+        """
+        pass
+    
+    @abstractmethod
+    def remove_button(self, action: str) -> None:
+        """
+        Remove a button from the toolbar.
+        
+        Args:
+            action: Action identifier
+        """
+        pass
+    
+    @abstractmethod
+    def set_button_enabled(self, action: str, enabled: bool) -> None:
+        """
+        Set button enabled state.
+        
+        Args:
+            action: Action identifier
+            enabled: Whether button is enabled
+        """
+        pass
+    
+    @abstractmethod
+    def set_action_handler(self, action: str, handler: Callable[[], None]) -> None:
+        """
+        Set action handler for a button.
+        
+        Args:
+            action: Action identifier
+            handler: Click handler
+        """
+        pass
+
+
+class IMenuBar(IComponent):
+    """Interface for menu bar component."""
+    
+    @abstractmethod
+    def add_menu(self, menu_id: str, label: str) -> None:
+        """
+        Add a top-level menu.
+        
+        Args:
+            menu_id: Menu identifier
+            label: Menu label
+        """
+        pass
+    
+    @abstractmethod
+    def add_menu_item(self, menu_id: str, item_id: str, label: str,
+                      handler: Optional[Callable[[], None]] = None,
+                      icon: Optional[str] = None,
+                      shortcut: Optional[str] = None) -> None:
+        """
+        Add a menu item.
+        
+        Args:
+            menu_id: Parent menu identifier
+            item_id: Item identifier
+            label: Item label
+            handler: Click handler
+            icon: Optional icon name
+            shortcut: Optional keyboard shortcut
+        """
+        pass
+    
+    @abstractmethod
+    def add_separator(self, menu_id: str) -> None:
+        """
+        Add a separator to a menu.
+        
+        Args:
+            menu_id: Menu identifier
+        """
+        pass
+    
+    @abstractmethod
+    def set_item_enabled(self, menu_id: str, item_id: str, enabled: bool) -> None:
+        """
+        Set menu item enabled state.
+        
+        Args:
+            menu_id: Menu identifier
+            item_id: Item identifier
+            enabled: Whether item is enabled
+        """
+        pass

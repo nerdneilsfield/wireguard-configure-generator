@@ -8,9 +8,11 @@ configuration management, and file operations.
 from .validation import ValidationManager
 from .graph import GraphManager
 from .config import ConfigManager
+from .command import CommandManager
 
 __all__ = [
     'ValidationManager',
     'GraphManager', 
     'ConfigManager',
+    'CommandManager',
 ]

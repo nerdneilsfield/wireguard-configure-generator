@@ -401,3 +401,85 @@ class IValidationManager(ABC):
             True if subnets overlap
         """
         pass
+
+
+class ICommandManager(ABC):
+    """Interface for command pattern manager (undo/redo)."""
+    
+    @abstractmethod
+    def execute(self, command: Any) -> bool:
+        """
+        Execute a command and add to history.
+        
+        Args:
+            command: Command to execute
+            
+        Returns:
+            True if successful
+        """
+        pass
+    
+    @abstractmethod
+    def undo(self) -> bool:
+        """
+        Undo the last command.
+        
+        Returns:
+            True if successful
+        """
+        pass
+    
+    @abstractmethod
+    def redo(self) -> bool:
+        """
+        Redo the last undone command.
+        
+        Returns:
+            True if successful
+        """
+        pass
+    
+    @abstractmethod
+    def can_undo(self) -> bool:
+        """Check if undo is available."""
+        pass
+    
+    @abstractmethod
+    def can_redo(self) -> bool:
+        """Check if redo is available."""
+        pass
+    
+    @abstractmethod
+    def get_history(self) -> List[str]:
+        """
+        Get command history descriptions.
+        
+        Returns:
+            List of command descriptions
+        """
+        pass
+    
+    @abstractmethod
+    def clear(self) -> None:
+        """Clear command history."""
+        pass
+    
+    @abstractmethod
+    def begin_batch(self, description: str) -> None:
+        """
+        Begin a batch operation.
+        
+        Args:
+            description: Batch operation description
+        """
+        pass
+    
+    @abstractmethod
+    def end_batch(self) -> bool:
+        """
+        End batch operation and execute as single command.
+        
+        Returns:
+            True if successful
+        """
+        pass
