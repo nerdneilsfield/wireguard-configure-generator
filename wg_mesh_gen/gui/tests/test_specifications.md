@@ -99,6 +99,33 @@ This document outlines comprehensive test specifications for the WireGuard Visua
 - Test subnet overlap detection
 - Test comprehensive error messages
 
+**FileManager Tests:**
+- Test file type detection (nodes, topology, group, keys)
+- Test file validation against schemas
+- Test file size limits enforcement
+- Test allowed extension checking
+- Test temporary file management
+- Test concurrent upload handling
+- Test session isolation
+
+**ImportWizard Tests:**
+- Test import type detection (traditional vs group)
+- Test file analysis and suggestions
+- Test import preview generation
+- Test merge strategies (replace, merge, keep)
+- Test validation during import
+- Test error collection and reporting
+- Test session cleanup
+
+**ExportManager Tests:**
+- Test configuration export (YAML/JSON)
+- Test WireGuard config generation
+- Test key database export
+- Test ZIP archive creation
+- Test visualization export (PNG/SVG)
+- Test export preview
+- Test selective export options
+
 #### 1.4 Component Tests
 
 **CytoscapeWidget Tests:**

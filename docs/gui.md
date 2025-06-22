@@ -1,11 +1,91 @@
 # WireGuard Visual Configuration Editor - Development Plan
 
 ## Table of Contents
-1. [Architecture Overview](#architecture-overview)
-2. [Detailed TODOs](#detailed-todos)
-3. [API & Interface Design](#api--interface-design)
-4. [Test Specifications](#test-specifications)
-5. [Implementation Plan](#implementation-plan)
+1. [Requirements](#requirements)
+2. [Architecture Overview](#architecture-overview)
+3. [Detailed TODOs](#detailed-todos)
+4. [API & Interface Design](#api--interface-design)
+5. [Test Specifications](#test-specifications)
+6. [Implementation Plan](#implementation-plan)
+
+## Requirements
+
+### Core Requirements
+
+1. **Visual Network Editor**
+   - Interactive graph visualization using Cytoscape.js
+   - Drag-and-drop node positioning
+   - Real-time network topology preview
+   - Group-based configuration support
+
+2. **File Upload/Download Support**
+   - **Upload Capabilities**:
+     - Import existing `nodes.yaml/json` files for editing
+     - Import existing `topology.yaml/json` files for editing
+     - Import `group_config.yaml/json` files for visualization and editing
+     - Import existing key database (`wg_keys.json`) to preserve keys
+   - **Download Capabilities**:
+     - Export edited configuration files in original format
+     - Download generated WireGuard `.conf` files (individually or as ZIP)
+     - Export key database for backup
+     - Export network visualization as image (PNG/SVG)
+
+3. **Configuration Management**
+   - Support both traditional (nodes + topology) and group-based configurations
+   - Automatic conversion between formats
+   - Real-time validation with helpful error messages
+   - Undo/redo support for all operations
+
+4. **Security & Limitations**
+   - File size limit: 10MB per file
+   - Allowed file extensions: `.yaml`, `.yml`, `.json`, `.conf`
+   - Schema validation for all uploaded files
+   - Session isolation to prevent user conflicts
+   - Automatic cleanup of temporary files
+
+### User Workflows
+
+1. **New Project Workflow**
+   - Start with empty canvas
+   - Add nodes and configure properties
+   - Create connections between nodes
+   - Generate and download configurations
+
+2. **Import Project Workflow**
+   - Upload configuration files (drag-and-drop or click)
+   - Auto-detect file types and validate
+   - Import into visual editor
+   - Edit and enhance configuration
+   - Export updated files
+
+3. **Key Management Workflow**
+   - Import existing key database
+   - Automatically use existing keys for known nodes
+   - Generate new keys for new nodes only
+   - Export complete key database
+
+### UI/UX Requirements
+
+1. **File Upload Interface**
+   - Drag-and-drop zone with clear instructions
+   - File type indicators and validation feedback
+   - Progress bars for large file uploads
+   - Clear error messages for invalid files
+
+2. **Export Options**
+   - Quick export (current format)
+   - Advanced export dialog with options:
+     - Include source configurations
+     - Include generated WireGuard configs
+     - Include key database
+     - Include network visualization
+   - Batch download as ZIP archive
+
+3. **Import Wizard**
+   - Guided import process for new users
+   - Auto-detection of configuration type
+   - Preview of what will be imported
+   - Merge options for existing projects
 
 ## Quick TODO Checklist
 
@@ -23,12 +103,13 @@
 - Event handling system operational
 - Technical approach validated and ready for full implementation
 
-### Phase 1: Interfaces & Tests First (3 days)
-- [ ] Define all interfaces in `wg_mesh_gen/gui/interfaces/`
-- [ ] Create test stubs for all interfaces
-- [ ] Write comprehensive test cases (without implementation)
-- [ ] Set up test infrastructure (pytest, mocks, fixtures)
-- [ ] Get approval on interfaces and test design
+### Phase 1: Interfaces & Tests First (3 days) ✅ COMPLETED
+- [x] Define all interfaces in `wg_mesh_gen/gui/interfaces/`
+- [x] Create test stubs for all interfaces
+- [x] Write comprehensive test cases (without implementation)
+- [x] Set up test infrastructure (pytest, mocks, fixtures)
+- [x] Added file management interfaces (IFileManager, IImportWizard, IExportManager)
+- [x] Get approval on interfaces and test design
 
 ### Phase 2: Core Implementation (5 days)
 - [ ] Implement models to pass tests

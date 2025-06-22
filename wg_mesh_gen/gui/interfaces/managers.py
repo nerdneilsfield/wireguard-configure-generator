@@ -261,6 +261,47 @@ class IConfigManager(ABC):
             List of validation errors
         """
         pass
+    
+    @abstractmethod
+    def import_key_database(self, file_path: Path) -> Dict[str, Dict[str, str]]:
+        """
+        Import key database from file.
+        
+        Args:
+            file_path: Path to key database file
+            
+        Returns:
+            Dictionary mapping node names to key pairs
+        """
+        pass
+    
+    @abstractmethod
+    def export_key_database(self, keys: Dict[str, Dict[str, str]], file_path: Path) -> None:
+        """
+        Export key database to file.
+        
+        Args:
+            keys: Dictionary mapping node names to key pairs
+            file_path: Path to save to
+        """
+        pass
+    
+    @abstractmethod
+    def merge_configurations(self, existing_state: IAppState, 
+                           imported_data: Dict[str, Any], 
+                           merge_strategy: str = 'replace') -> IAppState:
+        """
+        Merge imported configuration with existing state.
+        
+        Args:
+            existing_state: Current application state
+            imported_data: Data to import
+            merge_strategy: 'replace', 'merge', or 'keep_existing'
+            
+        Returns:
+            Merged application state
+        """
+        pass
 
 
 class IValidationManager(ABC):

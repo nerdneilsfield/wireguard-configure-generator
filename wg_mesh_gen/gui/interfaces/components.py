@@ -374,3 +374,129 @@ class INodeTree(IComponent):
             handler: Callback receiving (dragged_id, drop_target_id)
         """
         pass
+
+
+class IFileUploadComponent(IComponent):
+    """Interface for file upload component."""
+    
+    @property
+    @abstractmethod
+    def accepted_extensions(self) -> List[str]:
+        """List of accepted file extensions."""
+        pass
+    
+    @accepted_extensions.setter
+    @abstractmethod
+    def accepted_extensions(self, value: List[str]) -> None:
+        pass
+    
+    @property
+    @abstractmethod
+    def max_file_size(self) -> int:
+        """Maximum file size in bytes."""
+        pass
+    
+    @max_file_size.setter
+    @abstractmethod
+    def max_file_size(self, value: int) -> None:
+        pass
+    
+    @property
+    @abstractmethod
+    def multiple(self) -> bool:
+        """Whether multiple files can be uploaded."""
+        pass
+    
+    @multiple.setter
+    @abstractmethod
+    def multiple(self, value: bool) -> None:
+        pass
+    
+    @abstractmethod
+    def clear_files(self) -> None:
+        """Clear uploaded files."""
+        pass
+    
+    @abstractmethod
+    def get_uploaded_files(self) -> List[Dict[str, Any]]:
+        """
+        Get information about uploaded files.
+        
+        Returns:
+            List of file info dicts with 'name', 'size', 'path'
+        """
+        pass
+    
+    @abstractmethod
+    def on_upload(self, handler: Callable[[List[Dict[str, Any]]], None]) -> None:
+        """
+        Register upload handler.
+        
+        Args:
+            handler: Callback receiving list of uploaded file info
+        """
+        pass
+    
+    @abstractmethod
+    def on_error(self, handler: Callable[[str], None]) -> None:
+        """
+        Register error handler.
+        
+        Args:
+            handler: Callback receiving error message
+        """
+        pass
+
+
+class IExportDialog(IComponent):
+    """Interface for export dialog component."""
+    
+    @abstractmethod
+    def show(self, options: Dict[str, Any]) -> None:
+        """
+        Show export dialog with options.
+        
+        Args:
+            options: Export options to display
+        """
+        pass
+    
+    @abstractmethod
+    def hide(self) -> None:
+        """Hide the export dialog."""
+        pass
+    
+    @abstractmethod
+    def get_selected_options(self) -> Dict[str, bool]:
+        """
+        Get user-selected export options.
+        
+        Returns:
+            Dict of option names to boolean values
+        """
+        pass
+    
+    @abstractmethod
+    def set_preview(self, preview: Dict[str, Any]) -> None:
+        """
+        Set export preview information.
+        
+        Args:
+            preview: Preview data with file counts and sizes
+        """
+        pass
+    
+    @abstractmethod
+    def on_export(self, handler: Callable[[Dict[str, bool]], None]) -> None:
+        """
+        Register export handler.
+        
+        Args:
+            handler: Callback receiving selected options
+        """
+        pass
+    
+    @abstractmethod
+    def on_cancel(self, handler: Callable[[], None]) -> None:
+        """Register cancel handler."""
+        pass
