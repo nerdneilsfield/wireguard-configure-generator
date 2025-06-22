@@ -1,0 +1,208 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Group Network Configuration",
+  "description": "Schema for group-based WireGuard network configuration",
+  "type": "object",
+  "required": ["network_topology"],
+  "properties": {
+    "network_topology": {
+      "type": "object",
+      "required": ["groups"],
+      "properties": {
+        "groups": {
+          "type": "object",
+          "description": "Network groups definition",
+          "patternProperties": {
+            "^[a-zA-Z0-9_-]+$": {
+              "type": "object",
+              "required": ["nodes", "topology"],
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "description": "Group description"
+                },
+                "nodes": {
+                  "type": "object",
+                  "description": "Nodes in this group",
+                  "patternProperties": {
+                    "^[a-zA-Z0-9_-]+$": {
+                      "type": "object",
+                      "required": ["ip"],
+                      "properties": {
+                        "ip": {
+                          "type": "string",
+                          "pattern": "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/[0-9]{1,2}$",
+                          "description": "IP address with subnet prefix"
+                        },
+                        "endpoints": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[^:]+:[0-9]+$",
+                              "description": "Single endpoint"
+                            },
+                            {
+                              "type": "object",
+                              "description": "Named endpoints",
+                              "patternProperties": {
+                                "^[a-zA-Z0-9_-]+$": {
+                                  "type": "string",
+                                  "pattern": "^[^:]+:[0-9]+$"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "topology": {
+                  "type": "string",
+                  "enum": ["mesh", "star", "chain", "single"],
+                  "description": "Group internal topology type"
+                },
+                "mesh_endpoint": {
+                  "type": "string",
+                  "description": "Endpoint selector for mesh connections"
+                },
+                "hub_node": {
+                  "type": "string",
+                  "description": "Hub node name for star topology"
+                }
+              }
+            }
+          }
+        },
+        "connections": {
+          "type": "array",
+          "description": "Inter-group connections",
+          "items": {
+            "type": "object",
+            "required": ["name", "from", "to", "type", "routing"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Connection name"
+              },
+              "from": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "description": "Source group or node"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Multiple source groups"
+                  }
+                ]
+              },
+              "to": {
+                "type": "string",
+                "description": "Target group or node"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["outbound_only", "bidirectional", "gateway", "selective", "full_mesh"],
+                "description": "Connection type"
+              },
+              "endpoint_selector": {
+                "type": "string",
+                "description": "Which endpoint to use for connections"
+              },
+              "endpoint_mapping": {
+                "type": "object",
+                "description": "Endpoint mapping for bidirectional connections",
+                "patternProperties": {
+                  "^[a-zA-Z0-9_]+_to_[a-zA-Z0-9_]+$": {
+                    "type": "string"
+                  }
+                }
+              },
+              "gateway_nodes": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "to": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Specific nodes for selective connections"
+              },
+              "routing": {
+                "type": "object",
+                "required": ["allowed_ips"],
+                "properties": {
+                  "allowed_ips": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Allowed IP ranges or references"
+                  }
+                },
+                "patternProperties": {
+                  "^[a-zA-Z0-9_]+_allowed_ips$": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "special_flags": {
+                "type": "object",
+                "properties": {
+                  "is_bridge": {
+                    "type": "boolean"
+                  },
+                  "persistent_keepalive": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                  }
+                }
+              }
+            }
+          }
+        },
+        "global_settings": {
+          "type": "object",
+          "description": "Global settings for the network",
+          "properties": {
+            "auto_generate_keys": {
+              "type": "boolean",
+              "default": true
+            },
+            "routing_optimization": {
+              "type": "boolean",
+              "default": true
+            },
+            "endpoint_strategy": {
+              "type": "string",
+              "enum": ["auto", "manual"],
+              "default": "auto"
+            }
+          }
+        }
+      }
+    }
+  }
+}

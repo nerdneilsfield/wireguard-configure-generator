@@ -1,0 +1,68 @@
+# Simple WireGuard Group Network Configuration
+# This demonstrates a basic office network with remote access
+
+network_topology:
+  groups:
+    office:
+      description: "Office LAN"
+      nodes:
+        server1: 
+          ip: "10.10.1.1/24"
+          endpoints:
+            default: "192.168.1.10:51820"
+        server2: 
+          ip: "10.10.1.2/24"
+          endpoints:
+            default: "192.168.1.11:51820"
+        server3: 
+          ip: "10.10.1.3/24"
+          endpoints:
+            default: "192.168.1.12:51820"
+      topology: mesh                # Full mesh within office
+      
+    remote:
+      description: "Remote workers"
+      nodes:
+        laptop1: 
+          ip: "10.10.2.1/24"
+          endpoints:
+            default: "home1.dyndns.org:51820"
+        laptop2: 
+          ip: "10.10.2.2/24"
+          endpoints:
+            default: "home2.dyndns.org:51820"
+      topology: star
+      hub_node: laptop1             # laptop1 acts as hub
+      
+    gateway:
+      description: "Internet gateway"
+      nodes:
+        gw: 
+          ip: "10.10.100.1/24"
+          endpoints:
+            public: "company.example.com:51820"
+            internal: "192.168.1.1:51820"
+      topology: single
+  
+  connections:
+    # Office servers connect to gateway
+    - name: "office_to_gateway"
+      from: office
+      to: gateway
+      type: full_mesh
+      endpoint_selector: "internal"    # Use internal endpoint
+      routing:
+        allowed_ips: 
+          - "gateway.nodes"
+          - "remote.subnet"            # Access remote through gateway
+    
+    # Remote workers connect to gateway
+    - name: "remote_to_gateway"
+      from: remote
+      to: gateway
+      type: outbound_only
+      endpoint_selector: "public"      # Use public endpoint
+      routing:
+        allowed_ips:
+          - "gateway.nodes"
+          - "office.subnet"            # Access office through gateway

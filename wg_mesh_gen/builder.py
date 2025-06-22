@@ -11,6 +11,39 @@ from .logger import get_logger
 from .string_utils import mask_sensitive_info
 
 
+def build_from_data(nodes_data: Dict[str, Any],
+                   topology_data: Dict[str, Any],
+                   output_dir: str = "out",
+                   auto_generate_keys: bool = True,
+                   db_path: str = "wg_keys.json") -> Dict[str, Any]:
+    """
+    Build WireGuard peer configurations from data dictionaries.
+    
+    Args:
+        nodes_data: Nodes configuration data
+        topology_data: Topology configuration data
+        output_dir: Output directory for configuration files
+        auto_generate_keys: Whether to auto-generate missing keys
+        db_path: Path to key storage database
+        
+    Returns:
+        Dictionary containing build results
+    """
+    logger = get_logger()
+    logger.info("开始从数据构建WireGuard配置")
+    
+    # Extract nodes and peers
+    nodes = nodes_data.get('nodes', [])
+    peers = topology_data.get('peers', [])
+    
+    # Validate the data
+    from .validator import validate_business_logic
+    validate_business_logic(nodes, peers)
+    
+    # Use the common build logic
+    return _build_configs(nodes, peers, output_dir, auto_generate_keys, db_path)
+
+
 def build_peer_configs(nodes_file: str,
                       topology_file: str,
                       output_dir: str = "out",
@@ -34,7 +67,17 @@ def build_peer_configs(nodes_file: str,
 
     # Load and validate configurations in one step
     nodes, peers = validate_and_load_config(nodes_file, topology_file)
+    
+    # Use common build logic
+    return _build_configs(nodes, peers, output_dir, auto_generate_keys, db_path)
 
+
+def _build_configs(nodes: List[Dict[str, Any]], peers: List[Dict[str, Any]],
+                  output_dir: str, auto_generate_keys: bool,
+                  db_path: str) -> Dict[str, Any]:
+    """Common configuration building logic."""
+    logger = get_logger()
+    
     # Initialize key storage
     key_storage = SimpleKeyStorage(db_path)
     try:
@@ -145,7 +188,9 @@ def _build_node_config(node: Dict[str, Any],
             'address': node.get('wireguard_ip'),
             'listen_port': node.get('listen_port'),
             'dns': node.get('dns'),
-            'mtu': node.get('mtu')
+            'mtu': node.get('mtu'),
+            'post_up': node.get('post_up'),
+            'post_down': node.get('post_down')
         },
         'peers': node_peers
     }
@@ -267,7 +312,9 @@ def _build_node_config_optimized(node: Dict[str, Any],
             'address': node.get('wireguard_ip'),
             'listen_port': listen_port,
             'dns': node.get('dns'),
-            'mtu': node.get('mtu')
+            'mtu': node.get('mtu'),
+            'post_up': node.get('post_up'),
+            'post_down': node.get('post_down')
         },
         'peers': node_peers
     }

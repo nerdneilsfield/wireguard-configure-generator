@@ -50,8 +50,9 @@ def cli(ctx, verbose, log_file, nodes_file, topo_file, output_dir):
 @click.option('--nodes-file', '-n', help='节点配置文件路径')
 @click.option('--topo-file', '-t', help='拓扑配置文件路径')
 @click.option('--output-dir', '-o', help='输出目录')
+@click.option('--group-config', '-g', help='组网络配置文件路径')
 @click.pass_context
-def gen(ctx, auto_keys, db_path, verbose, log_file, nodes_file, topo_file, output_dir):
+def gen(ctx, auto_keys, db_path, verbose, log_file, nodes_file, topo_file, output_dir, group_config):
     """生成WireGuard配置文件"""
     # 使用子命令参数或回退到主命令参数
     verbose = verbose or ctx.obj.get('verbose', False)
@@ -65,29 +66,60 @@ def gen(ctx, auto_keys, db_path, verbose, log_file, nodes_file, topo_file, outpu
 
     logger = get_logger()
 
-    logger.info("开始生成WireGuard配置")
-    logger.info(f"节点文件: {nodes_file}")
-    logger.info(f"拓扑文件: {topo_file}")
-    logger.info(f"输出目录: {output_dir}")
-
     try:
-        # Check if input files exist
-        if not os.path.exists(nodes_file):
-            logger.error(f"节点配置文件不存在: {nodes_file}")
-            raise click.ClickException(f"Nodes file not found: {nodes_file}")
+        # Check if using group configuration
+        if group_config:
+            logger.info("使用组网络配置模式")
+            logger.info(f"组配置文件: {group_config}")
+            logger.info(f"输出目录: {output_dir}")
+            
+            if not os.path.exists(group_config):
+                logger.error(f"组配置文件不存在: {group_config}")
+                raise click.ClickException(f"Group config file not found: {group_config}")
+            
+            # Use group network builder
+            from .group_network_builder import GroupNetworkBuilder
+            
+            builder = GroupNetworkBuilder(group_config)
+            nodes, peers = builder.build()
+            
+            # Create temporary data structures
+            nodes_data = {'nodes': nodes}
+            topology_data = {'peers': peers}
+            
+            # Use existing builder with generated data
+            from .builder import build_from_data
+            build_result = build_from_data(
+                nodes_data=nodes_data,
+                topology_data=topology_data,
+                output_dir=output_dir,
+                auto_generate_keys=auto_keys,
+                db_path=db_path
+            )
+        else:
+            # Traditional mode
+            logger.info("开始生成WireGuard配置")
+            logger.info(f"节点文件: {nodes_file}")
+            logger.info(f"拓扑文件: {topo_file}")
+            logger.info(f"输出目录: {output_dir}")
 
-        if not os.path.exists(topo_file):
-            logger.error(f"拓扑配置文件不存在: {topo_file}")
-            raise click.ClickException(f"Topology file not found: {topo_file}")
+            # Check if input files exist
+            if not os.path.exists(nodes_file):
+                logger.error(f"节点配置文件不存在: {nodes_file}")
+                raise click.ClickException(f"Nodes file not found: {nodes_file}")
 
-        # Build configurations
-        build_result = build_peer_configs(
-            nodes_file=nodes_file,
-            topology_file=topo_file,
-            output_dir=output_dir,
-            auto_generate_keys=auto_keys,
-            db_path=db_path
-        )
+            if not os.path.exists(topo_file):
+                logger.error(f"拓扑配置文件不存在: {topo_file}")
+                raise click.ClickException(f"Topology file not found: {topo_file}")
+
+            # Build configurations
+            build_result = build_peer_configs(
+                nodes_file=nodes_file,
+                topology_file=topo_file,
+                output_dir=output_dir,
+                auto_generate_keys=auto_keys,
+                db_path=db_path
+            )
 
         # Render configurations
         renderer = ConfigRenderer()
@@ -269,6 +301,51 @@ def valid(ctx, verbose, log_file, nodes_file, topo_file):
 
     except Exception as e:
         logger.error(f"验证配置失败: {e}")
+        raise click.ClickException(str(e))
+
+
+@cli.command('convert-group')
+@click.option('--group-config', '-g', required=True, help='组网络配置文件路径')
+@click.option('--output-nodes', '-n', default='nodes_generated.yaml', help='输出节点配置文件')
+@click.option('--output-topology', '-t', default='topology_generated.yaml', help='输出拓扑配置文件')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+def convert_group(group_config, output_nodes, output_topology, verbose):
+    """将组配置转换为传统配置格式"""
+    if verbose:
+        setup_logging(verbose=True)
+    
+    logger = get_logger()
+    logger.info("开始转换组配置")
+    
+    try:
+        if not os.path.exists(group_config):
+            raise click.ClickException(f"Group config file not found: {group_config}")
+        
+        from .group_network_builder import GroupNetworkBuilder
+        import yaml
+        
+        # Build configurations
+        builder = GroupNetworkBuilder(group_config)
+        nodes, peers = builder.build()
+        
+        # Save nodes configuration
+        nodes_data = {'nodes': nodes}
+        with open(output_nodes, 'w', encoding='utf-8') as f:
+            yaml.dump(nodes_data, f, default_flow_style=False, allow_unicode=True)
+        logger.info(f"节点配置已保存到: {output_nodes}")
+        
+        # Save topology configuration
+        topology_data = {'peers': peers}
+        with open(output_topology, 'w', encoding='utf-8') as f:
+            yaml.dump(topology_data, f, default_flow_style=False, allow_unicode=True)
+        logger.info(f"拓扑配置已保存到: {output_topology}")
+        
+        click.echo(f"转换完成:")
+        click.echo(f"  节点配置: {output_nodes}")
+        click.echo(f"  拓扑配置: {output_topology}")
+        
+    except Exception as e:
+        logger.error(f"转换失败: {e}")
         raise click.ClickException(str(e))
 
 

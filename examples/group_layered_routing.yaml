@@ -1,0 +1,178 @@
+# WireGuard Layered Routing Configuration
+# This demonstrates the cross-border network scenario with proper routing
+
+network_topology:
+  groups:
+    office:
+      description: "办公室内网（校园网子网）"
+      nodes:
+        A: 
+          ip: "10.96.1.2/24"
+          endpoints:
+            default: "192.168.1.10:51820"
+        B: 
+          ip: "10.96.1.3/24"
+          endpoints:
+            default: "192.168.1.11:51820"
+        C: 
+          ip: "10.96.1.4/24"
+          endpoints:
+            default: "192.168.1.12:51820"
+      topology: mesh
+      
+    campus:
+      description: "校园网服务器"
+      nodes:
+        D: 
+          ip: "10.96.2.2/24"
+          endpoints:
+            default: "10.0.1.20:51820"
+        E: 
+          ip: "10.96.2.3/24"
+          endpoints:
+            default: "10.0.1.21:51820"
+        F: 
+          ip: "10.96.2.4/24"
+          endpoints:
+            default: "10.0.1.22:51820"
+      topology: mesh
+      
+    china_relay:
+      description: "国内中转服务器"
+      nodes:
+        G: 
+          ip: "10.96.100.1/24"
+          endpoints:
+            public: "china-public.example.com:51820"      # 公网端点
+            special: "10.10.10.10:22222"                  # 特殊通道端点
+          is_relay: true                                   # 标记为中继节点
+          post_up:
+            # Enable IP forwarding
+            - "sysctl -w net.ipv4.ip_forward=1"
+            # Allow forwarding through WireGuard interface
+            - "iptables -A FORWARD -i %i -j ACCEPT"
+            - "iptables -A FORWARD -o %i -j ACCEPT"
+            # NAT for outgoing traffic (if needed)
+            - "iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
+          post_down:
+            - "iptables -D FORWARD -i %i -j ACCEPT || true"
+            - "iptables -D FORWARD -o %i -j ACCEPT || true"
+            - "iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE || true"
+      topology: single
+      role: relay
+      
+    overseas:
+      description: "海外服务器集群"
+      nodes:
+        H: 
+          ip: "10.96.200.2/24"
+          endpoints:
+            public: "us1.example.com:51820"               # 正常公网
+            special: "172.16.1.1:33333"                   # 特殊通道后的地址
+          is_relay: true                                   # H也是中继节点
+          post_up:
+            - "sysctl -w net.ipv4.ip_forward=1"
+            - "iptables -A FORWARD -i %i -j ACCEPT"
+            - "iptables -A FORWARD -o %i -j ACCEPT"
+          post_down:
+            - "iptables -D FORWARD -i %i -j ACCEPT || true"
+            - "iptables -D FORWARD -o %i -j ACCEPT || true"
+        I: 
+          ip: "10.96.200.3/24"
+          endpoints:
+            default: "us2.example.com:51820"
+        J: 
+          ip: "10.96.200.4/24"
+          endpoints:
+            default: "us3.example.com:51820"
+      topology: mesh
+      
+    us_home:
+      description: "美国家里"
+      nodes:
+        K: 
+          ip: "10.96.250.2/24"
+          endpoints:
+            default: "192.168.50.10:51820"                 # 家里内网
+        L: 
+          ip: "10.96.250.3/24"
+          endpoints:
+            default: "192.168.50.11:51820"
+      topology: mesh
+  
+  connections:
+    # Layer 1: China internal connections
+    # Office -> Campus (one-way, within China)
+    - name: "office_to_campus"
+      from: office
+      to: campus
+      type: outbound_only
+      routing:
+        allowed_ips: ["campus.subnet"]
+    
+    # Office/Campus -> China Relay (one-way, to access overseas)
+    - name: "china_to_relay"
+      from: [office, campus]
+      to: china_relay
+      type: outbound_only
+      endpoint_selector: "public"
+      routing:
+        allowed_ips:
+          - "china_relay.nodes"                    # G itself
+          - "overseas.subnet"                      # Route to overseas via G
+          - "us_home.subnet"                       # Route to US home via G
+    
+    # Layer 2: Cross-border bridge (the only cross-GFW connection)
+    - name: "china_overseas_bridge"
+      from: china_relay.G
+      to: overseas.H
+      type: bidirectional
+      endpoint_mapping:
+        G_to_H: "H.special"                        # G uses H's special endpoint
+        H_to_G: "G.special"                        # H uses G's special endpoint
+      special_flags:
+        is_bridge: true
+        persistent_keepalive: 25
+      routing:
+        # G's routing table
+        G_allowed_ips:
+          - "overseas.subnet"                      # Forward to overseas
+          - "us_home.subnet"                       # Forward to US home
+        # H's routing table  
+        H_allowed_ips:
+          - "office.subnet"                        # Accept from office
+          - "campus.subnet"                        # Accept from campus
+          - "china_relay.nodes"                    # Accept from G
+    
+    # Layer 3: Overseas internal connections
+    # Other overseas nodes connect to relay H
+    - name: "overseas_to_relay"
+      from: overseas
+      to: overseas.H
+      type: selective
+      nodes: [I, J]                                # Only I and J connect to H
+      routing:
+        allowed_ips:
+          - "china_relay.nodes"                    # To reach G
+          - "office.subnet"                        # To reach office via G
+          - "campus.subnet"                        # To reach campus via G
+    
+    # US Home -> Overseas (direct connection, no GFW)
+    - name: "home_to_overseas"
+      from: us_home
+      to: overseas
+      type: gateway
+      gateway_nodes:
+        to: [H]                                    # H as gateway
+      endpoint_selector: "public"
+      routing:
+        allowed_ips: 
+          - "overseas.subnet"                      # Direct access to overseas
+          - "china_relay.nodes"                    # Access China via H->G
+          - "office.subnet"                        # Access office via H->G
+          - "campus.subnet"                        # Access campus via H->G
+  
+  # Routing summary:
+  # - China nodes (Office/Campus) -> G -> H -> Overseas/USHome
+  # - Overseas/USHome -> H -> G -> X (G cannot initiate to Office/Campus)
+  # - The only cross-GFW connection is G <-> H via special tunnel

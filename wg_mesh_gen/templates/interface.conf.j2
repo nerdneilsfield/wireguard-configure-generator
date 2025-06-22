@@ -11,6 +11,14 @@ PrivateKey = {{ interface.private_key }}
 {% endif -%}
 {% if interface.mtu %}MTU = {{ interface.mtu }}
 {% endif -%}
+{% if interface.post_up -%}
+{% for cmd in interface.post_up %}PostUp = {{ cmd }}
+{% endfor -%}
+{% endif -%}
+{% if interface.post_down -%}
+{% for cmd in interface.post_down %}PostDown = {{ cmd }}
+{% endfor -%}
+{% endif -%}
 {% for peer in peers %}
 [Peer]
 # {{ peer.name }}

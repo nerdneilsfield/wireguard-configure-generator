@@ -8,6 +8,7 @@ without requiring actual WireGuard interfaces or network connections.
 import asyncio
 import time
 import random
+import ipaddress
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, field
 from collections import defaultdict
@@ -86,6 +87,11 @@ class MockWireGuardNode:
         # Connection states
         self.peer_states: Dict[str, ConnectionState] = {}
         self.peer_metrics: Dict[str, ConnectionMetrics] = defaultdict(ConnectionMetrics)
+        
+        # Routing support
+        self.routing_table = {}  # destination_ip -> next_hop_peer
+        self.ip_forward_enabled = config.get('enable_ip_forward', False)
+        self.allowed_ips = {}  # peer -> list of allowed IPs
         
         # Packet queues
         self.inbound_queue: asyncio.Queue = asyncio.Queue()
@@ -211,9 +217,19 @@ class MockWireGuardNode:
         self.keepalive_timers[peer_name] = time.time()
     
     async def _handle_data(self, packet: MockPacket):
-        """Handle data packet"""
-        # In a real implementation, this would process the data
-        pass
+        """Handle data packet with routing support"""
+        self.logger.debug(f"{self.name} received data from {packet.src}: {packet.payload}")
+        
+        # Check if this is the final destination
+        destination_ip = packet.payload.get('destination_ip', '')
+        if self._is_local_destination(destination_ip):
+            # Process locally
+            self.logger.info(f"{self.name} received packet for local processing: {destination_ip}")
+        elif self.ip_forward_enabled:
+            # Forward the packet if we're a relay
+            await self._forward_packet(packet)
+        else:
+            self.logger.warning(f"{self.name} dropped packet for {destination_ip} (forwarding disabled)")
     
     async def _process_keepalive(self):
         """Send periodic keepalive packets"""
@@ -247,6 +263,69 @@ class MockWireGuardNode:
                 'uptime': time.time() - metrics.connection_established if metrics.connection_established else 0
             }
         }
+    
+    def _is_local_destination(self, destination_ip: str) -> bool:
+        """Check if the destination IP belongs to this node"""
+        if not destination_ip:
+            return True
+        
+        try:
+            dest_ip = ipaddress.ip_address(destination_ip)
+            node_interface = ipaddress.ip_interface(self.ip)
+            return dest_ip == node_interface.ip
+        except ValueError:
+            return False
+    
+    async def _forward_packet(self, packet: MockPacket):
+        """Forward a packet to the next hop"""
+        destination_ip = packet.payload.get('destination_ip', '')
+        
+        # Find next hop
+        next_hop = self._find_next_hop(destination_ip)
+        if not next_hop:
+            self.logger.warning(f"{self.name} has no route to {destination_ip}")
+            return
+        
+        # Create forwarded packet
+        forwarded_packet = MockPacket(
+            src=self.name,
+            dst=next_hop,
+            packet_type=PacketType.DATA,
+            payload=packet.payload,
+            size_bytes=packet.size_bytes
+        )
+        
+        self.logger.debug(f"{self.name} forwarding packet to {next_hop} for destination {destination_ip}")
+        await self.send_packet(forwarded_packet)
+    
+    def _find_next_hop(self, destination_ip: str) -> Optional[str]:
+        """Find the next hop for a destination IP"""
+        if not destination_ip:
+            return None
+        
+        try:
+            dest_ip = ipaddress.ip_address(destination_ip)
+            
+            # Check routing table
+            for peer_name, peer_allowed_ips in self.allowed_ips.items():
+                for allowed_ip_str in peer_allowed_ips:
+                    try:
+                        allowed_network = ipaddress.ip_network(allowed_ip_str)
+                        if dest_ip in allowed_network:
+                            # Check if we have an active connection to this peer
+                            if self.peer_states.get(peer_name) == ConnectionState.CONNECTED:
+                                return peer_name
+                    except ValueError:
+                        continue
+            
+            return None
+        except ValueError:
+            return None
+    
+    def update_allowed_ips(self, peer_name: str, allowed_ips: List[str]):
+        """Update allowed IPs for a peer"""
+        self.allowed_ips[peer_name] = allowed_ips
+        self.logger.debug(f"{self.name} updated allowed IPs for {peer_name}: {allowed_ips}")
 
 
 class MockWireGuardNetwork:
@@ -278,6 +357,11 @@ class MockWireGuardNetwork:
         for node_config in self.nodes_config:
             name = node_config['name']
             self.graph.add_node(name, **node_config)
+            
+            # Ensure relay nodes have IP forwarding enabled
+            if node_config.get('role') == 'relay' or node_config.get('enable_ip_forward'):
+                node_config['enable_ip_forward'] = True
+            
             self.mock_nodes[name] = MockWireGuardNode(name, node_config)
         
         # Create edges based on topology
@@ -389,6 +473,10 @@ class MockWireGuardNetwork:
             if from_node in self.mock_nodes and to_node in self.mock_nodes:
                 from_node_obj = self.mock_nodes[from_node]
                 to_node_obj = self.mock_nodes[to_node]
+                
+                # Set up allowed IPs
+                allowed_ips = peer.get('allowed_ips', [])
+                from_node_obj.update_allowed_ips(to_node, allowed_ips)
                 
                 # Initiate connection
                 await from_node_obj.connect_to_peer(to_node, to_node_obj.public_key)
