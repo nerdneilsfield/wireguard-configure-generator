@@ -3,8 +3,10 @@ Component interfaces for UI elements.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Callable, Any
-from nicegui import ui
+from typing import Dict, List, Optional, Callable, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from nicegui import ui
 
 
 class IComponent(ABC):
@@ -39,7 +41,7 @@ class IComponent(ABC):
         pass
     
     @abstractmethod
-    def render(self) -> ui.element:
+    def render(self) -> 'ui.element':
         """
         Render the component.
         
