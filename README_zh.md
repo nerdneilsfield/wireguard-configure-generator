@@ -220,80 +220,140 @@ peers:
 
 ### 组网络配置
 
-组网络配置功能通过允许您定义节点组及其关系来简化复杂的拓扑定义。
+组网络配置功能通过允许您定义节点组及其关系来简化复杂的拓扑定义。查看[详细的组配置指南](docs/group_config_guide.md)获取完整文档。
 
-<details>
-<summary>点击展开组配置示例</summary>
+#### 配置结构
 
 ```yaml
-# group_network.yaml
+# 组配置文件的基本结构
+nodes:
+  group_name:        # 节点的逻辑分组
+    - name: node_name
+      wireguard_ip: IP/subnet
+      endpoints:
+        endpoint_name: address:port
+      
+groups:              # 定义节点之间的连接
+  - name: group_name
+    nodes: [...]
+    topology: mesh|star|chain|single
+    
+routing:             # 可选：自定义路由规则
+  node_allowed_ips:
+    - subnet1
+    - subnet2
+```
+
+#### 拓扑类型
+
+**1. 网状拓扑（Mesh）** - 所有节点相互连接
+
+![网状拓扑](docs/images/topology_mesh.png)
+
+```yaml
+groups:
+  - name: team_mesh
+    nodes: [Alice, Bob, Charlie]
+    topology: mesh
+```
+
+**2. 星型拓扑（Star）** - 所有节点连接到中心节点
+
+![星型拓扑](docs/images/topology_star.png)
+
+```yaml
+groups:
+  - name: branches_to_hq
+    from: branches
+    to: HQ
+    type: star
+```
+
+**3. 复杂多站点网络**
+
+![复杂网络](docs/images/topology_complex.png)
+
+<details>
+<summary>点击展开复杂网络配置</summary>
+
+```yaml
 nodes:
   office:
-    - name: A
-      wireguard_ip: 10.96.0.2/16
+    - name: Office-PC1
+      wireguard_ip: 10.1.0.10/16
       endpoints:
-        mesh: 192.168.1.10:51820
-        public: 203.0.113.10:51820
-    - name: B  
-      wireguard_ip: 10.96.0.3/16
+        lan: 192.168.1.10:51820
+    - name: Office-PC2
+      wireguard_ip: 10.1.0.11/16
       endpoints:
-        mesh: 192.168.1.11:51820
-    - name: C
-      wireguard_ip: 10.96.0.4/16
+        lan: 192.168.1.11:51820
+        
+  cloud:
+    - name: AWS-Server
+      wireguard_ip: 10.2.0.10/16
       endpoints:
-        mesh: 192.168.1.12:51820
-
-  campus:
-    - name: D
-      wireguard_ip: 10.96.0.5/16
+        public: 52.1.2.3:51820
+    - name: GCP-Server
+      wireguard_ip: 10.2.0.11/16
       endpoints:
-        public: 202.10.20.5:51820
-    - name: E
-      wireguard_ip: 10.96.0.6/16  
-      endpoints:
-        public: 202.10.20.6:51820
-
-  relay:
-    - name: G
-      wireguard_ip: 10.96.0.254/16
+        public: 35.4.5.6:51820
+        
+  relays:
+    - name: Office-Gateway
+      wireguard_ip: 10.1.0.1/16
       role: relay
       enable_ip_forward: true
       endpoints:
-        public: 45.33.22.11:51820
+        lan: 192.168.1.1:51820
+        public: 203.0.113.1:51820
+    - name: Cloud-Gateway
+      wireguard_ip: 10.2.0.1/16
+      role: relay
+      enable_ip_forward: true
+      endpoints:
+        public: 54.7.8.9:51820
 
 groups:
-  - name: office
-    nodes: [A, B, C]
+  # 办公室内部网状连接
+  - name: office_mesh
+    nodes: [Office-PC1, Office-PC2]
     topology: mesh
-    mesh_endpoint: mesh  # 内部连接使用 'mesh' 端点
+    mesh_endpoint: lan  # 内部使用 LAN 端点
     
-  - name: campus
-    nodes: [D, E]
+  # 云服务器网状连接
+  - name: cloud_mesh
+    nodes: [AWS-Server, GCP-Server]
     topology: mesh
     
-  - name: office_to_relay
+  # 办公室到网关连接
+  - name: office_to_gateway
     from: office
-    to: G
-    type: star  # 所有办公室节点连接到 G
-
-  - name: campus_to_relay
-    from: campus
-    to: G
+    to: Office-Gateway
     type: star
     
-# 复杂场景的路由配置
+  # 云到网关连接
+  - name: cloud_to_gateway
+    from: cloud
+    to: Cloud-Gateway
+    type: star
+    
+  # 网关互联
+  - name: gateway_link
+    from: Office-Gateway
+    to: Cloud-Gateway
+    type: single
+
 routing:
-  G_allowed_ips:  # G 可以访问的 IP
-    - 10.96.0.0/16
+  # 定义每个网关可以路由的子网
+  Office-Gateway_allowed_ips:
+    - 10.1.0.0/24  # 办公室子网
+    - 10.2.0.0/24  # 云子网（通过 Cloud-Gateway）
+  Cloud-Gateway_allowed_ips:
+    - 10.2.0.0/24  # 云子网
+    - 10.1.0.0/24  # 办公室子网（通过 Office-Gateway）
 ```
 
 </details>
-
-**支持的拓扑类型：**
-- `mesh`：组内所有节点之间的全网状连接
-- `star`：所有节点连接到中心节点
-- `chain`：顺序连接（A→B→C）
-- `single`：单节点连接
 
 ### 密钥管理
 
@@ -369,37 +429,78 @@ peers:
 
 ### 跨境网络的分层路由
 
+对于跨越有连接限制区域（如 GFW）的网络，使用带中继节点的分层路由：
+
+![分层路由](docs/images/topology_layered.png)
+
 <details>
-<summary>点击展开分层路由示例</summary>
+<summary>点击展开分层路由配置</summary>
 
 ```yaml
 # 示例：中国的办公室节点只能连接到中继 G（不能直接连接海外）
 # 通过使用中继节点处理 GFW 限制
 
+nodes:
+  china:
+    - name: cn-office1
+      wireguard_ip: 10.96.0.10/16
+      endpoints:
+        internal: 192.168.1.10:51820
+    - name: cn-office2
+      wireguard_ip: 10.96.0.11/16
+      endpoints:
+        internal: 192.168.1.11:51820
+        
+  hongkong:
+    - name: hk-relay
+      wireguard_ip: 10.96.1.1/16
+      role: relay
+      enable_ip_forward: true
+      endpoints:
+        public: 45.45.45.45:51820  # 大陆可访问
+        
+  overseas:
+    - name: us-server
+      wireguard_ip: 10.96.2.10/16
+      endpoints:
+        public: 1.2.3.4:51820
+    - name: eu-server
+      wireguard_ip: 10.96.3.10/16
+      endpoints:
+        public: 5.6.7.8:51820
+
 groups:
+  # 中国办公室只能连接到香港中继
   - name: china_to_relay
-    from: office  # 中国的节点
-    to: G         # 从中国可访问的中继
+    from: china  # 中国的节点
+    to: hk-relay # 从中国可访问的中继
     type: star
     
+  # 香港中继连接到海外服务器
   - name: relay_to_overseas  
-    from: G       # 中继节点
-    to: [H, I]    # 海外节点
+    from: hk-relay  # 中继节点
+    to: [us-server, eu-server]  # 海外节点
     type: star
 
 routing:
-  # G 可以在中国和海外之间转发流量
-  G_allowed_ips:
+  # 香港中继可以在中国和海外之间转发流量
+  hk-relay_allowed_ips:
     - 10.96.0.0/24    # 中国子网
-    - 10.96.1.0/24    # 海外子网
+    - 10.96.2.0/24    # 美国子网
+    - 10.96.3.0/24    # 欧洲子网
     
-  # 办公室节点通过 G 路由海外流量
-  office_allowed_ips:
-    - 10.96.0.254/32  # G 的 IP
-    - 10.96.1.0/24    # 海外子网（通过 G）
+  # 中国办公室通过香港路由海外流量
+  china_allowed_ips:
+    - 10.96.1.1/32    # 香港中继 IP
+    - 10.96.2.0/24    # 美国子网（通过香港）
+    - 10.96.3.0/24    # 欧洲子网（通过香港）
 ```
 
-系统自动为中继节点生成 PostUp/PostDown 脚本以启用 IP 转发。
+系统自动为中继节点生成 PostUp/PostDown 脚本以启用 IP 转发：
+```bash
+PostUp = sysctl -w net.ipv4.ip_forward=1
+PostUp = sysctl -w net.ipv6.conf.all.forwarding=1
+```
 
 </details>
 
@@ -458,6 +559,41 @@ graph LR
 - 为您的网络优化 MTU 设置
 - 考虑使用多个端点进行负载均衡
 - 监控带宽使用并调整路由
+
+## 可视化示例
+
+### 网络拓扑展示
+
+<table>
+<tr>
+<td align="center">
+<img src="docs/images/topology_mesh.png" width="300">
+<br>
+<b>网状网络</b><br>
+所有节点之间完全连接
+</td>
+<td align="center">
+<img src="docs/images/topology_star.png" width="300">
+<br>
+<b>星型拓扑</b><br>
+中心枢纽与分支连接
+</td>
+</tr>
+<tr>
+<td align="center">
+<img src="docs/images/topology_complex.png" width="300">
+<br>
+<b>多站点网络</b><br>
+办公室和云站点通过网关连接
+</td>
+<td align="center">
+<img src="docs/images/topology_layered.png" width="300">
+<br>
+<b>分层路由</b><br>
+带中继节点的跨境网络
+</td>
+</tr>
+</table>
 
 ## 测试
 

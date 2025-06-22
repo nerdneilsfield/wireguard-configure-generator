@@ -1,0 +1,74 @@
+# Complex multi-site network
+nodes:
+  office:
+    - name: Office-PC1
+      wireguard_ip: 10.1.0.10/16
+      endpoints:
+        lan: 192.168.1.10:51820
+    - name: Office-PC2
+      wireguard_ip: 10.1.0.11/16
+      endpoints:
+        lan: 192.168.1.11:51820
+        
+  cloud:
+    - name: AWS-Server
+      wireguard_ip: 10.2.0.10/16
+      endpoints:
+        public: 52.1.2.3:51820
+    - name: GCP-Server
+      wireguard_ip: 10.2.0.11/16
+      endpoints:
+        public: 35.4.5.6:51820
+        
+  relays:
+    - name: Office-Gateway
+      wireguard_ip: 10.1.0.1/16
+      role: relay
+      enable_ip_forward: true
+      endpoints:
+        lan: 192.168.1.1:51820
+        public: 203.0.113.1:51820
+    - name: Cloud-Gateway
+      wireguard_ip: 10.2.0.1/16
+      role: relay
+      enable_ip_forward: true
+      endpoints:
+        public: 54.7.8.9:51820
+
+groups:
+  # Office mesh
+  - name: office_mesh
+    nodes: [Office-PC1, Office-PC2]
+    topology: mesh
+    mesh_endpoint: lan
+    
+  # Cloud mesh
+  - name: cloud_mesh
+    nodes: [AWS-Server, GCP-Server]
+    topology: mesh
+    
+  # Office to gateway
+  - name: office_to_gateway
+    from: office
+    to: Office-Gateway
+    type: star
+    
+  # Cloud to gateway
+  - name: cloud_to_gateway
+    from: cloud
+    to: Cloud-Gateway
+    type: star
+    
+  # Gateways connect
+  - name: gateway_link
+    from: Office-Gateway
+    to: Cloud-Gateway
+    type: single
+
+routing:
+  Office-Gateway_allowed_ips:
+    - 10.1.0.0/24
+    - 10.2.0.0/24
+  Cloud-Gateway_allowed_ips:
+    - 10.2.0.0/24
+    - 10.1.0.0/24

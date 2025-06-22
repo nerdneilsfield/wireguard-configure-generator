@@ -593,3 +593,63 @@ Simulation results include:
 - Added 7 comprehensive tests for the simulator
 - All tests passing
 - Covers basic simulation, connectivity, routing, failure scenarios
+
+---
+
+## 2025-06-22 - Enhanced Documentation with Visual Examples
+
+### Summary
+
+Created comprehensive documentation for the group network configuration feature with visual examples and detailed configuration guides.
+
+### Changes Made
+
+1. **Created Detailed Group Configuration Guide**
+   - Added `docs/group_config_guide.md` with comprehensive documentation
+   - Covers configuration structure, topology types, real-world examples
+   - Includes troubleshooting and best practices
+   - Documents advanced features like multiple endpoints and custom routing
+
+2. **Generated Visualization Images**
+   - Created example configurations for different topology types
+   - Generated 9 visualization images showing various network configurations:
+     - `topology_mesh.png` - Simple 3-node mesh network
+     - `topology_star.png` - Star topology with central hub
+     - `topology_complex.png` - Multi-site network with gateways
+     - `topology_layered.png` - Cross-border network with relay nodes
+     - Additional examples for basic, simple, and large-scale networks
+
+3. **Enhanced README Documentation**
+   - Added visual examples with embedded topology images
+   - Improved group configuration documentation with clear structure
+   - Added detailed examples for mesh, star, and complex networks
+   - Included visual topology gallery showing different network types
+
+4. **Updated Chinese Documentation**
+   - Synchronized README_zh.md with English version
+   - Added all visual examples and enhanced configuration guides
+   - Translated new sections while maintaining consistency
+
+### Key Documentation Improvements
+
+1. **Configuration Structure**
+   - Clear explanation of nodes, groups, and routing sections
+   - YAML structure examples with comments
+   - Visual representation of each topology type
+
+2. **Real-World Examples**
+   - Office network with internet gateway
+   - Multi-site corporate network with Beijing/Shanghai offices
+   - Cross-border network handling GFW restrictions
+   - Each example includes full configuration and explanation
+
+3. **Visual Network Gallery**
+   - Table layout showing 4 key topology types
+   - Each image with descriptive caption
+   - Helps users quickly understand different network patterns
+
+4. **Advanced Features Documentation**
+   - Multiple endpoints per node
+   - Endpoint selection for specific connections
+   - Custom routing rules with pattern matching
+   - Automatic PostUp/PostDown script generation

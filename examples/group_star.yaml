@@ -1,0 +1,28 @@
+# Star topology example
+nodes:
+  branches:
+    - name: Branch1
+      wireguard_ip: 10.0.1.10/16
+      endpoints:
+        public: 203.0.113.10:51820
+    - name: Branch2
+      wireguard_ip: 10.0.2.10/16
+      endpoints:
+        public: 203.0.113.20:51820
+    - name: Branch3
+      wireguard_ip: 10.0.3.10/16
+      endpoints:
+        public: 203.0.113.30:51820
+        
+  hq:
+    - name: HQ
+      wireguard_ip: 10.0.0.1/16
+      role: relay
+      endpoints:
+        public: 203.0.113.1:51820
+
+groups:
+  - name: branches_to_hq
+    from: branches
+    to: HQ
+    type: star

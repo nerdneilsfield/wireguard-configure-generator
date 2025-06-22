@@ -210,80 +210,140 @@ peers:
 
 ### Group Network Configuration
 
-The group network configuration feature simplifies complex topology definitions by allowing you to define groups of nodes and their relationships.
+The group network configuration feature simplifies complex topology definitions by allowing you to define groups of nodes and their relationships. See the [detailed group configuration guide](docs/group_config_guide.md) for comprehensive documentation.
 
-<details>
-<summary>Click to expand group configuration example</summary>
+#### Configuration Structure
 
 ```yaml
-# group_network.yaml
+# Basic structure of a group configuration file
+nodes:
+  group_name:        # Logical grouping of nodes
+    - name: node_name
+      wireguard_ip: IP/subnet
+      endpoints:
+        endpoint_name: address:port
+      
+groups:              # Define connections between nodes
+  - name: group_name
+    nodes: [...]
+    topology: mesh|star|chain|single
+    
+routing:             # Optional: Custom routing rules
+  node_allowed_ips:
+    - subnet1
+    - subnet2
+```
+
+#### Topology Types
+
+**1. Mesh Topology** - All nodes connect to each other
+
+![Mesh Topology](docs/images/topology_mesh.png)
+
+```yaml
+groups:
+  - name: team_mesh
+    nodes: [Alice, Bob, Charlie]
+    topology: mesh
+```
+
+**2. Star Topology** - All nodes connect to a central hub
+
+![Star Topology](docs/images/topology_star.png)
+
+```yaml
+groups:
+  - name: branches_to_hq
+    from: branches
+    to: HQ
+    type: star
+```
+
+**3. Complex Multi-Site Network**
+
+![Complex Network](docs/images/topology_complex.png)
+
+<details>
+<summary>Click to expand complex network configuration</summary>
+
+```yaml
 nodes:
   office:
-    - name: A
-      wireguard_ip: 10.96.0.2/16
+    - name: Office-PC1
+      wireguard_ip: 10.1.0.10/16
       endpoints:
-        mesh: 192.168.1.10:51820
-        public: 203.0.113.10:51820
-    - name: B  
-      wireguard_ip: 10.96.0.3/16
+        lan: 192.168.1.10:51820
+    - name: Office-PC2
+      wireguard_ip: 10.1.0.11/16
       endpoints:
-        mesh: 192.168.1.11:51820
-    - name: C
-      wireguard_ip: 10.96.0.4/16
+        lan: 192.168.1.11:51820
+        
+  cloud:
+    - name: AWS-Server
+      wireguard_ip: 10.2.0.10/16
       endpoints:
-        mesh: 192.168.1.12:51820
-
-  campus:
-    - name: D
-      wireguard_ip: 10.96.0.5/16
+        public: 52.1.2.3:51820
+    - name: GCP-Server
+      wireguard_ip: 10.2.0.11/16
       endpoints:
-        public: 202.10.20.5:51820
-    - name: E
-      wireguard_ip: 10.96.0.6/16  
-      endpoints:
-        public: 202.10.20.6:51820
-
-  relay:
-    - name: G
-      wireguard_ip: 10.96.0.254/16
+        public: 35.4.5.6:51820
+        
+  relays:
+    - name: Office-Gateway
+      wireguard_ip: 10.1.0.1/16
       role: relay
       enable_ip_forward: true
       endpoints:
-        public: 45.33.22.11:51820
+        lan: 192.168.1.1:51820
+        public: 203.0.113.1:51820
+    - name: Cloud-Gateway
+      wireguard_ip: 10.2.0.1/16
+      role: relay
+      enable_ip_forward: true
+      endpoints:
+        public: 54.7.8.9:51820
 
 groups:
-  - name: office
-    nodes: [A, B, C]
+  # Office internal mesh
+  - name: office_mesh
+    nodes: [Office-PC1, Office-PC2]
     topology: mesh
-    mesh_endpoint: mesh  # Use 'mesh' endpoint for internal connections
+    mesh_endpoint: lan  # Use LAN endpoint for internal
     
-  - name: campus
-    nodes: [D, E]
+  # Cloud servers mesh
+  - name: cloud_mesh
+    nodes: [AWS-Server, GCP-Server]
     topology: mesh
     
-  - name: office_to_relay
+  # Office to gateway connections
+  - name: office_to_gateway
     from: office
-    to: G
-    type: star  # All office nodes connect to G
-
-  - name: campus_to_relay
-    from: campus
-    to: G
+    to: Office-Gateway
     type: star
     
-# Routing configuration for complex scenarios
+  # Cloud to gateway connections
+  - name: cloud_to_gateway
+    from: cloud
+    to: Cloud-Gateway
+    type: star
+    
+  # Gateway interconnection
+  - name: gateway_link
+    from: Office-Gateway
+    to: Cloud-Gateway
+    type: single
+
 routing:
-  G_allowed_ips:  # IPs that G can reach
-    - 10.96.0.0/16
+  # Define which subnets each gateway can route
+  Office-Gateway_allowed_ips:
+    - 10.1.0.0/24  # Office subnet
+    - 10.2.0.0/24  # Cloud subnet (via Cloud-Gateway)
+  Cloud-Gateway_allowed_ips:
+    - 10.2.0.0/24  # Cloud subnet
+    - 10.1.0.0/24  # Office subnet (via Office-Gateway)
 ```
 
 </details>
-
-**Supported Topologies:**
-- `mesh`: Full mesh connectivity between all nodes in the group
-- `star`: All nodes connect to a central node
-- `chain`: Sequential connections (A→B→C)
-- `single`: Single node connections
 
 ### Key Management
 
@@ -359,37 +419,78 @@ peers:
 
 ### Layered Routing for Cross-Border Networks
 
+For networks that span regions with connectivity restrictions (e.g., GFW), use layered routing with relay nodes:
+
+![Layered Routing](docs/images/topology_layered.png)
+
 <details>
-<summary>Click to expand layered routing example</summary>
+<summary>Click to expand layered routing configuration</summary>
 
 ```yaml
 # Example: Office nodes in China can only connect to relay G (not overseas)
 # This handles GFW restrictions by using relay nodes
 
+nodes:
+  china:
+    - name: cn-office1
+      wireguard_ip: 10.96.0.10/16
+      endpoints:
+        internal: 192.168.1.10:51820
+    - name: cn-office2
+      wireguard_ip: 10.96.0.11/16
+      endpoints:
+        internal: 192.168.1.11:51820
+        
+  hongkong:
+    - name: hk-relay
+      wireguard_ip: 10.96.1.1/16
+      role: relay
+      enable_ip_forward: true
+      endpoints:
+        public: 45.45.45.45:51820  # Accessible from mainland
+        
+  overseas:
+    - name: us-server
+      wireguard_ip: 10.96.2.10/16
+      endpoints:
+        public: 1.2.3.4:51820
+    - name: eu-server
+      wireguard_ip: 10.96.3.10/16
+      endpoints:
+        public: 5.6.7.8:51820
+
 groups:
+  # China offices can only connect to HK relay
   - name: china_to_relay
-    from: office  # Nodes in China
-    to: G         # Relay accessible from China
+    from: china  # Nodes in China
+    to: hk-relay # Relay accessible from China
     type: star
     
+  # HK relay connects to overseas servers
   - name: relay_to_overseas  
-    from: G       # Relay node
-    to: [H, I]    # Overseas nodes
+    from: hk-relay  # Relay node
+    to: [us-server, eu-server]  # Overseas nodes
     type: star
 
 routing:
-  # G can forward traffic between China and overseas
-  G_allowed_ips:
+  # HK relay can forward traffic between China and overseas
+  hk-relay_allowed_ips:
     - 10.96.0.0/24    # China subnet
-    - 10.96.1.0/24    # Overseas subnet
+    - 10.96.2.0/24    # US subnet
+    - 10.96.3.0/24    # EU subnet
     
-  # Office nodes route overseas traffic through G
-  office_allowed_ips:
-    - 10.96.0.254/32  # G's IP
-    - 10.96.1.0/24    # Overseas subnet (via G)
+  # China offices route overseas traffic through HK
+  china_allowed_ips:
+    - 10.96.1.1/32    # HK relay IP
+    - 10.96.2.0/24    # US subnet (via HK)
+    - 10.96.3.0/24    # EU subnet (via HK)
 ```
 
-The system automatically generates PostUp/PostDown scripts for relay nodes to enable IP forwarding.
+The system automatically generates PostUp/PostDown scripts for relay nodes to enable IP forwarding:
+```bash
+PostUp = sysctl -w net.ipv4.ip_forward=1
+PostUp = sysctl -w net.ipv6.conf.all.forwarding=1
+```
 
 </details>
 
@@ -448,6 +549,41 @@ graph LR
 - Optimize MTU settings for your network
 - Consider using multiple endpoints for load balancing
 - Monitor bandwidth usage and adjust routing
+
+## Visual Examples
+
+### Network Topology Gallery
+
+<table>
+<tr>
+<td align="center">
+<img src="docs/images/topology_mesh.png" width="300">
+<br>
+<b>Mesh Network</b><br>
+Full connectivity between all nodes
+</td>
+<td align="center">
+<img src="docs/images/topology_star.png" width="300">
+<br>
+<b>Star Topology</b><br>
+Central hub with spoke connections
+</td>
+</tr>
+<tr>
+<td align="center">
+<img src="docs/images/topology_complex.png" width="300">
+<br>
+<b>Multi-Site Network</b><br>
+Office and cloud sites with gateways
+</td>
+<td align="center">
+<img src="docs/images/topology_layered.png" width="300">
+<br>
+<b>Layered Routing</b><br>
+Cross-border network with relay nodes
+</td>
+</tr>
+</table>
 
 ## Testing
 
