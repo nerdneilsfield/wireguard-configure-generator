@@ -34,7 +34,8 @@ class EdgeModel(BaseModel, IEdgeModel):
             **kwargs: Additional arguments for BaseModel
         """
         # Initialize base model
-        super().__init__(**kwargs)
+        base_kwargs = {k: v for k, v in kwargs.items() if k in ['id', 'created_at', 'updated_at', 'metadata']}
+        super().__init__(**base_kwargs)
         
         # Set properties
         self.source_id = source_id

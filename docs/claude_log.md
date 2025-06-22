@@ -1264,3 +1264,98 @@ Phase 3 is complete with all UI components implemented. The application is now r
 2. Deployment considerations
 3. Performance optimization
 4. Additional features based on user feedback
+
+---
+
+## 2025-06-22 - GUI Phase 5: Refactoring to Use CLI Functionality
+
+### Summary
+
+Based on critical user feedback about code duplication, thoroughly refactored the GUI implementation to properly integrate with existing CLI functionality through adapter patterns, eliminating all duplicate implementations.
+
+### Problem Identified
+
+The user discovered that the GUI was creating parallel implementations instead of using existing CLI functionality:
+- Configuration file parsing was being reimplemented
+- Configuration generation was duplicated
+- Validation logic was partially duplicated
+- This would require maintaining two separate implementations
+
+### Solution Implemented
+
+1. **Created Adapter Pattern Architecture**
+   - `wg_mesh_gen/gui/adapters/cli_adapter.py`: Main adapter for CLI integration
+   - `wg_mesh_gen/gui/adapters/config_adapter.py`: Configuration file management
+   - `wg_mesh_gen/gui/adapters/group_adapter.py`: Group configuration handling
+   - All adapters use existing CLI modules without duplication
+
+2. **Refactored ConfigManager**
+   - Removed all duplicate parsing and generation logic
+   - Now uses adapters to call existing CLI functions:
+     - `load_nodes()` and `load_topology()` for file loading
+     - `SmartBuilder` and `ConfigRenderer` for generation
+     - `validate_business_logic()` for validation
+   - Maintains thin wrapper for GUI-specific needs
+
+3. **Refactored ValidationManager**
+   - Removed duplicate validation implementations
+   - Uses `CLIAdapter.validate_configuration()` for all validation
+   - Only adds GUI-specific validations (visual positions, etc.)
+   - Properly uses `ValidationContext` from CLI
+
+4. **Refactored GraphManager**
+   - Integrated NetworkX for graph operations
+   - Uses `GroupAdapter` for topology expansion via CLI's `GroupNetworkBuilder`
+   - Validation uses CLI validators through adapter
+   - Maintains graph visualization logic separate from business logic
+
+### Technical Details
+
+**CLIAdapter Key Methods:**
+- `node_model_to_cli()` / `cli_node_to_model()`: Convert between GUI and CLI formats
+- `build_configurations()`: Uses CLI's `build_from_data()` or `SmartBuilder`
+- `render_configurations()`: Uses CLI's `ConfigRenderer`
+- `validate_configuration()`: Uses CLI's validation functions
+- `get_or_generate_keys()`: Uses CLI's `SimpleKeyStorage`
+
+**ConfigAdapter Key Methods:**
+- `load_nodes_file()` / `load_topology_file()`: Direct CLI loader usage
+- `load_group_configuration()`: Uses CLI's `GroupNetworkBuilder`
+- `save_nodes_file()` / `save_topology_file()`: Maintains CLI format
+- File type detection and format conversion
+
+**GroupAdapter Key Methods:**
+- `expand_group_topology()`: Uses CLI's `GroupNetworkBuilder`
+- `analyze_group_connections()`: Leverages CLI topology logic
+- `convert_to_node_edge_format()`: CLI compatibility layer
+
+### Benefits Achieved
+
+1. **No Code Duplication**: GUI is now a pure UI layer over CLI functionality
+2. **Consistency**: Behavior identical between CLI and GUI
+3. **Maintainability**: Changes to CLI automatically reflected in GUI
+4. **Smaller Codebase**: Removed hundreds of lines of duplicate code
+5. **Better Testing**: Can rely on existing CLI tests
+
+### Architectural Pattern
+
+```
+GUI Layer (Pure UI)
+    ↓
+Adapter Layer (Format conversion)
+    ↓
+CLI Layer (Business logic)
+```
+
+This ensures:
+- GUI models extend CLI functionality without reimplementing
+- Adapters handle format conversion and compatibility
+- All business logic remains in the CLI layer
+- GUI focuses purely on user interaction
+
+### Validation Results
+
+- All managers now properly instantiate without abstract method errors
+- Model initialization issues resolved
+- GUI can load, validate, and generate configurations using CLI functions
+- No duplicate parsing or generation code remains

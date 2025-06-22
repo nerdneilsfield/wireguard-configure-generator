@@ -108,3 +108,6 @@ python -m wg_mesh_gen.cli keys list
 - **Logging Workflow**:
   - Complete all operations for a phase and record them with a timestamp in `docs/claude_logs.md`
   - Commit changes with English commit messages
+
+## Project Management Notes
+- This project is managed by uv, use uv to install and run, remember to use uv venv

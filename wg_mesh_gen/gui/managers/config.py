@@ -1,177 +1,292 @@
 """
 Configuration manager implementation for the GUI.
 
-This module integrates with existing CLI loaders and provides
-configuration import/export functionality.
+This module properly integrates with existing CLI functionality through adapters,
+avoiding any duplication of code.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
-import json
-import yaml
+import logging
 
 from ..interfaces.managers import IConfigManager
 from ..interfaces.state import IAppState
 from ..models import NodeModel, EdgeModel, GroupModel
+from ..state import AppState
+from ..adapters import CLIAdapter, ConfigAdapter, GroupAdapter
 
-# Import existing CLI utilities
-from ...loader import load_nodes, load_topology
-from ...group_network_builder import GroupNetworkBuilder
-from ...file_utils import load_config, save_yaml
+# Use existing logger from CLI
 from ...logger import get_logger
 
 
 class ConfigManager(IConfigManager):
-    """Implementation of IConfigManager for configuration management."""
+    """
+    Implementation of IConfigManager that uses CLI functionality through adapters.
+    
+    This avoids any duplication and ensures consistency with CLI behavior.
+    """
     
     def __init__(self):
         """Initialize the configuration manager."""
         self._logger = get_logger()
-        self._supported_formats = {
-            'nodes': ['yaml', 'json'],
-            'topology': ['yaml', 'json'],
-            'group_config': ['yaml', 'json'],
-            'wg_keys': ['json']
-        }
+        self.current_file: Optional[Path] = None
+        self.has_unsaved_changes = False
+        
+        # Initialize adapters to reuse CLI functionality
+        self.cli_adapter = CLIAdapter()
+        self.config_adapter = ConfigAdapter(self.cli_adapter)
+        self.group_adapter = GroupAdapter(self.cli_adapter)
     
-    def load_nodes_config(self, file_path: str) -> Dict[str, Any]:
-        """
-        Load nodes configuration from file.
-        
-        Args:
-            file_path: Path to nodes configuration file
-            
-        Returns:
-            Nodes configuration data
-        """
-        self._logger.info(f"Loading nodes configuration from: {file_path}")
-        
-        # Use existing loader
-        nodes_list = load_nodes(file_path)
-        
-        # Convert to dict format expected by GUI
-        return {'nodes': nodes_list}
+    # File Format Support
     
-    def load_topology_config(self, file_path: str) -> Dict[str, Any]:
-        """
-        Load topology configuration from file.
-        
-        Args:
-            file_path: Path to topology configuration file
-            
-        Returns:
-            Topology configuration data
-        """
-        self._logger.info(f"Loading topology configuration from: {file_path}")
-        
-        # Use existing loader
-        peers_list = load_topology(file_path)
-        
-        # Convert to dict format expected by GUI
-        return {'peers': peers_list}
-    
-    def load_group_config(self, file_path: str) -> Dict[str, Any]:
-        """
-        Load group configuration from file.
-        
-        Args:
-            file_path: Path to group configuration file
-            
-        Returns:
-            Group configuration data
-        """
-        self._logger.info(f"Loading group configuration from: {file_path}")
-        
-        # Load using existing utility
-        config_data = load_config(file_path)
-        
-        # Validate structure
-        if 'groups' not in config_data:
-            raise ValueError("Invalid group configuration: missing 'groups' field")
-        
-        return config_data
-    
-    def save_configuration(self, app_state: IAppState, file_path: str, format: str = 'yaml') -> None:
-        """
-        Save the current configuration to file.
-        
-        Args:
-            app_state: Application state to save
-            file_path: Path to save configuration
-            format: Output format ('yaml' or 'json')
-        """
-        self._logger.info(f"Saving configuration to: {file_path} (format: {format})")
-        
-        # Determine what type of configuration to save based on filename
-        path = Path(file_path)
-        filename = path.stem.lower()
-        
-        if 'node' in filename:
-            data = self._export_nodes_config(app_state)
-        elif 'topology' in filename or 'topo' in filename:
-            data = self._export_topology_config(app_state)
-        elif 'group' in filename:
-            data = self._export_group_config(app_state)
-        else:
-            # Default to complete configuration
-            data = self.export_configuration(app_state)
-        
-        # Save using existing utility
-        if format == 'json':
-            import json
-            Path(file_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-        else:
-            save_yaml(data, file_path)
-    
-    def import_from_cli(self, app_state: IAppState, nodes_file: Optional[str] = None,
-                       topology_file: Optional[str] = None, group_file: Optional[str] = None) -> None:
-        """
-        Import configuration from CLI format files.
-        
-        Args:
-            app_state: Application state to populate
-            nodes_file: Optional nodes configuration file
-            topology_file: Optional topology configuration file
-            group_file: Optional group configuration file
-        """
-        # Clear existing state
-        app_state.nodes.clear()
-        app_state.edges.clear()
-        app_state.groups.clear()
-        app_state.clear_selection()
-        
-        # Load group configuration if provided
-        if group_file:
-            self._import_group_config(app_state, group_file)
-        
-        # Load nodes if provided
-        if nodes_file:
-            self._import_nodes(app_state, nodes_file)
-        
-        # Load topology if provided
-        if topology_file:
-            self._import_topology(app_state, topology_file)
-        
-        # Mark state as clean after import
-        app_state.mark_clean()
-    
-    def export_configuration(self, app_state: IAppState) -> Dict[str, Any]:
-        """
-        Export complete configuration from app state.
-        
-        Args:
-            app_state: Application state to export
-            
-        Returns:
-            Complete configuration data
-        """
+    def get_supported_formats(self) -> Dict[str, List[str]]:
+        """Get supported file formats for each configuration type."""
         return {
-            'nodes': self._export_nodes_config(app_state),
-            'topology': self._export_topology_config(app_state),
-            'groups': self._export_group_config(app_state)
+            'nodes': ['yaml', 'yml', 'json'],
+            'topology': ['yaml', 'yml', 'json'],
+            'group': ['yaml', 'yml', 'json'],
+            'wireguard': ['conf'],
+            'keys': ['json']
         }
+    
+    # Main Load/Save Methods
+    
+    def load_configuration(self, file_path: Path) -> IAppState:
+        """
+        Load configuration from file using CLI loaders.
+        
+        Args:
+            file_path: Path to configuration file
+            
+        Returns:
+            Loaded application state
+        """
+        self._logger.info(f"Loading configuration from {file_path}")
+        
+        if not file_path.exists():
+            raise FileNotFoundError(f"Configuration file not found: {file_path}")
+        
+        # Use config adapter which properly uses CLI loaders
+        state = self.config_adapter.load_complete_configuration(file_path)
+        
+        self.current_file = file_path
+        self.has_unsaved_changes = False
+        
+        return state
+    
+    def save_configuration(self, state: IAppState, file_path: Optional[Path] = None) -> None:
+        """
+        Save configuration to file using CLI formats.
+        
+        Args:
+            state: Application state to save
+            file_path: Path to save to (uses current file if None)
+        """
+        if file_path is None:
+            file_path = self.current_file
+        
+        if file_path is None:
+            raise ValueError("No file path specified")
+        
+        self._logger.info(f"Saving configuration to {file_path}")
+        
+        # Detect file type to determine format
+        file_type = self.config_adapter.detect_file_type(file_path) if file_path.exists() else None
+        
+        # Determine format based on filename if new file
+        if file_type is None:
+            if 'group' in file_path.name.lower():
+                file_type = 'group'
+            elif 'topo' in file_path.name.lower():
+                file_type = 'topology'
+            else:
+                file_type = 'nodes'
+        
+        # Save appropriately
+        if file_type == 'group':
+            self.export_group_config(state, file_path)
+        elif file_type == 'topology':
+            nodes_file = file_path.parent / 'nodes.yaml'
+            self.config_adapter.export_state_to_files(state, nodes_file, file_path)
+        else:
+            # Default to nodes file
+            topo_file = file_path.parent / 'topology.yaml'
+            self.config_adapter.export_state_to_files(state, file_path, topo_file)
+        
+        self.current_file = file_path
+        self.has_unsaved_changes = False
+    
+    # Import Methods
+    
+    def import_yaml(self, file_path: Path) -> IAppState:
+        """Import configuration from YAML file."""
+        return self.load_configuration(file_path)
+    
+    def import_json(self, file_path: Path) -> IAppState:
+        """Import configuration from JSON file."""
+        return self.load_configuration(file_path)
+    
+    def import_nodes(self, file_path: Path) -> List[NodeModel]:
+        """Import nodes from file using CLI loader."""
+        return self.config_adapter.load_nodes_file(file_path)
+    
+    def import_topology(self, file_path: Path, nodes: Dict[str, NodeModel]) -> List[EdgeModel]:
+        """Import topology from file using CLI loader."""
+        edges = self.config_adapter.load_topology_file(file_path)
+        
+        # Update edge source/target IDs based on current node IDs
+        name_to_id = {node.name: node.id for node in nodes.values()}
+        
+        for edge in edges:
+            # Find source and target by name
+            for node in nodes.values():
+                if hasattr(edge, '_source_name') and node.name == edge._source_name:
+                    edge.source_id = node.id
+                if hasattr(edge, '_target_name') and node.name == edge._target_name:
+                    edge.target_id = node.id
+        
+        return edges
+    
+    def import_group_config(self, file_path: Path) -> Tuple[List[NodeModel], List[EdgeModel], List[GroupModel]]:
+        """Import group configuration using CLI GroupNetworkBuilder."""
+        return self.config_adapter.load_group_configuration(file_path)
+    
+    def import_wireguard(self, conf_dir: Path) -> IAppState:
+        """
+        Import from existing WireGuard configurations.
+        
+        Note: This feature doesn't exist in CLI yet.
+        """
+        self._logger.warning("WireGuard config import not yet implemented")
+        return AppState()
+    
+    # Export Methods
+    
+    def export_yaml(self, state: IAppState, file_path: Path) -> None:
+        """Export configuration to YAML file."""
+        nodes = list(state.nodes.values())
+        edges = list(state.edges.values())
+        
+        # Determine what to export based on filename
+        if 'topo' in file_path.name.lower():
+            self.config_adapter.save_topology_file(edges, file_path)
+        else:
+            self.config_adapter.save_nodes_file(nodes, file_path)
+    
+    def export_json(self, state: IAppState, file_path: Path) -> None:
+        """Export configuration to JSON file."""
+        nodes = list(state.nodes.values())
+        edges = list(state.edges.values())
+        
+        # Determine what to export based on filename
+        if 'topo' in file_path.name.lower():
+            self.config_adapter.save_topology_file(edges, file_path)
+        else:
+            self.config_adapter.save_nodes_file(nodes, file_path)
+    
+    def export_nodes(self, state: IAppState, file_path: Path) -> None:
+        """Export nodes to file."""
+        nodes = list(state.nodes.values())
+        self.config_adapter.save_nodes_file(nodes, file_path)
+    
+    def export_topology(self, state: IAppState, file_path: Path) -> None:
+        """Export topology to file."""
+        edges = list(state.edges.values())
+        self.config_adapter.save_topology_file(edges, file_path)
+    
+    def export_group_config(self, state: IAppState, file_path: Path) -> None:
+        """Export group configuration."""
+        groups = list(state.groups.values())
+        
+        # Extract connections from edges
+        # This is a simplified version - a full implementation would analyze
+        # edge metadata to reconstruct connection definitions
+        connections = []
+        
+        group_config = self.group_adapter.build_group_configuration(groups, connections)
+        
+        if file_path.suffix in ['.yaml', '.yml']:
+            self.config_adapter.save_yaml_file(group_config, file_path)
+        else:
+            self.config_adapter.save_json_file(group_config, file_path)
+    
+    def export_wireguard(self, state: IAppState, output_dir: Path) -> None:
+        """Export to WireGuard configuration files using CLI renderer."""
+        nodes = list(state.nodes.values())
+        edges = list(state.edges.values())
+        
+        # Build configurations using CLI builder
+        configs = self.cli_adapter.build_configurations(nodes, edges, use_smart_builder=True)
+        
+        # Render to files using CLI renderer
+        output_files = self.cli_adapter.render_configurations(configs, output_dir)
+        
+        self._logger.info(f"Generated {len(output_files)} WireGuard configurations")
+    
+    # Configuration Generation
+    
+    def generate_wireguard_configs(self, state: IAppState, output_dir: Path) -> Dict[str, Path]:
+        """
+        Generate WireGuard configuration files using CLI functionality.
+        
+        Args:
+            state: Application state
+            output_dir: Directory to save configs to
+            
+        Returns:
+            Dictionary mapping node names to file paths
+        """
+        nodes = list(state.nodes.values())
+        edges = list(state.edges.values())
+        
+        # Build and render using CLI tools
+        configs = self.cli_adapter.build_configurations(nodes, edges, use_smart_builder=True)
+        return self.cli_adapter.render_configurations(configs, output_dir)
+    
+    # Validation
+    
+    def validate_configuration(self, state: IAppState) -> List[str]:
+        """Validate configuration using CLI validators."""
+        nodes = list(state.nodes.values())
+        edges = list(state.edges.values())
+        
+        return self.cli_adapter.validate_configuration(nodes, edges)
+    
+    def validate_files(self, nodes_file: Path, topology_file: Path) -> List[str]:
+        """Validate configuration files using CLI validator."""
+        return self.config_adapter.validate_configuration_files(nodes_file, topology_file)
+    
+    # Key Management
+    
+    def import_key_database(self, file_path: Path) -> Dict[str, Dict[str, str]]:
+        """Import key database from file."""
+        try:
+            # Use config adapter to load JSON
+            data = self.config_adapter.load_json_file(file_path)
+            
+            # Convert to expected format
+            keys = {}
+            for node_name, node_data in data.items():
+                if isinstance(node_data, dict) and 'private_key' in node_data:
+                    keys[node_name] = {
+                        'private_key': node_data['private_key'],
+                        'public_key': node_data.get('public_key', '')
+                    }
+            
+            return keys
+            
+        except Exception as e:
+            self._logger.error(f"Failed to import key database: {e}")
+            return {}
+    
+    def export_key_database(self, keys: Dict[str, Dict[str, str]], file_path: Path) -> None:
+        """Export key database to file."""
+        try:
+            self.config_adapter.save_json_file(keys, file_path)
+        except Exception as e:
+            self._logger.error(f"Failed to export key database: {e}")
+    
+    # Utility Methods
     
     def merge_configurations(self, base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -184,7 +299,6 @@ class ConfigManager(IConfigManager):
         Returns:
             Merged configuration
         """
-        # Deep merge logic
         merged = base.copy()
         
         for key, value in overlay.items():
@@ -192,280 +306,29 @@ class ConfigManager(IConfigManager):
                 # Recursive merge for dicts
                 merged[key] = self.merge_configurations(merged[key], value)
             elif key in merged and isinstance(merged[key], list) and isinstance(value, list):
-                # For lists, we'll append (could be made smarter)
-                merged[key] = merged[key] + value
+                # For lists, append unique items
+                existing = set(str(item) for item in merged[key])
+                for item in value:
+                    if str(item) not in existing:
+                        merged[key].append(item)
             else:
                 # Direct overlay
                 merged[key] = value
         
         return merged
     
-    def validate_configuration(self, config: Dict[str, Any]) -> List[str]:
-        """
-        Validate a configuration.
-        
-        Args:
-            config: Configuration to validate
-            
-        Returns:
-            List of validation errors
-        """
-        errors = []
-        
-        # Check structure
-        if not isinstance(config, dict):
-            errors.append("Configuration must be a dictionary")
-            return errors
-        
-        # Validate nodes if present
-        if 'nodes' in config:
-            if not isinstance(config['nodes'], dict):
-                errors.append("'nodes' must be a dictionary")
-            else:
-                nodes_data = config['nodes']
-                if 'nodes' in nodes_data and isinstance(nodes_data['nodes'], list):
-                    for i, node_data in enumerate(nodes_data['nodes']):
-                        if 'name' not in node_data:
-                            errors.append(f"Node {i} missing required 'name' field")
-        
-        # Validate topology if present
-        if 'topology' in config:
-            if not isinstance(config['topology'], dict):
-                errors.append("'topology' must be a dictionary")
-            else:
-                topo_data = config['topology']
-                if 'peers' in topo_data and isinstance(topo_data['peers'], list):
-                    for i, peer_data in enumerate(topo_data['peers']):
-                        if 'from' not in peer_data:
-                            errors.append(f"Peer {i} missing required 'from' field")
-                        if 'to' not in peer_data:
-                            errors.append(f"Peer {i} missing required 'to' field")
-        
-        # Validate groups if present
-        if 'groups' in config:
-            if not isinstance(config['groups'], dict):
-                errors.append("'groups' must be a dictionary")
-            else:
-                groups_data = config['groups']
-                if 'groups' in groups_data and isinstance(groups_data['groups'], list):
-                    for i, group_data in enumerate(groups_data['groups']):
-                        if 'name' not in group_data:
-                            errors.append(f"Group {i} missing required 'name' field")
-                        if 'topology' not in group_data:
-                            errors.append(f"Group {i} missing required 'topology' field")
-        
-        return errors
+    def get_configuration_type(self, file_path: Path) -> str:
+        """Detect configuration file type."""
+        return self.config_adapter.detect_file_type(file_path)
     
-    def _import_nodes(self, app_state: IAppState, nodes_file: str) -> None:
-        """Import nodes from CLI format."""
-        nodes_list = load_nodes(nodes_file)
-        
-        for node_data in nodes_list:
-            # Create NodeModel
-            node = NodeModel(
-                name=node_data['name'],
-                role=node_data.get('role', 'client'),
-                wireguard_ip=node_data.get('wireguard_ip')
-            )
-            
-            # Handle endpoints
-            endpoints = node_data.get('endpoints', {})
-            if endpoints:
-                # Take the first endpoint as primary
-                for endpoint_name, endpoint_value in endpoints.items():
-                    node.endpoint = endpoint_value
-                    node.metadata['endpoint_name'] = endpoint_name
-                    break
-            
-            # Add listen port if present
-            if 'listen_port' in node_data:
-                node.metadata['listen_port'] = node_data['listen_port']
-            
-            # Add to state
-            app_state.add_node(node)
+    def has_changes(self) -> bool:
+        """Check if there are unsaved changes."""
+        return self.has_unsaved_changes
     
-    def _import_topology(self, app_state: IAppState, topology_file: str) -> None:
-        """Import topology from CLI format."""
-        peers_list = load_topology(topology_file)
-        
-        # Create name to ID mapping
-        name_to_id = {node.name: node.id for node in app_state.nodes.values()}
-        
-        for peer_data in peers_list:
-            from_name = peer_data['from']
-            to_name = peer_data['to']
-            
-            # Skip if nodes don't exist
-            if from_name not in name_to_id or to_name not in name_to_id:
-                self._logger.warning(f"Skipping peer {from_name} -> {to_name}: node not found")
-                continue
-            
-            # Create EdgeModel
-            edge = EdgeModel(
-                source_id=name_to_id[from_name],
-                target_id=name_to_id[to_name],
-                allowed_ips=peer_data.get('allowed_ips', [])
-            )
-            
-            # Add endpoint selection if present
-            if 'endpoint' in peer_data:
-                edge.metadata['endpoint_key'] = peer_data['endpoint']
-            
-            # Add to state
-            app_state.add_edge(edge)
+    def mark_changed(self) -> None:
+        """Mark that changes have been made."""
+        self.has_unsaved_changes = True
     
-    def _import_group_config(self, app_state: IAppState, group_file: str) -> None:
-        """Import group configuration."""
-        config_data = load_config(group_file)
-        groups_list = config_data.get('groups', [])
-        
-        # First pass: create all nodes from groups
-        all_nodes = {}  # name -> node_data
-        for group_data in groups_list:
-            for node_name in group_data.get('nodes', []):
-                if node_name not in all_nodes:
-                    all_nodes[node_name] = {
-                        'name': node_name,
-                        'role': 'client',  # Default role
-                        'groups': []
-                    }
-                all_nodes[node_name]['groups'].append(group_data['name'])
-        
-        # Create nodes
-        name_to_id = {}
-        for node_name, node_info in all_nodes.items():
-            node = NodeModel(name=node_name, role=node_info['role'])
-            app_state.add_node(node)
-            name_to_id[node_name] = node.id
-        
-        # Create groups
-        for group_data in groups_list:
-            # Create GroupModel
-            group = GroupModel(
-                name=group_data['name'],
-                topology=group_data['topology'],
-                mesh_endpoint=group_data.get('endpoint')
-            )
-            
-            # Set CLI compatibility flag
-            group.metadata['cli_compatible'] = True
-            
-            # Add nodes to group
-            for node_name in group_data.get('nodes', []):
-                if node_name in name_to_id:
-                    group.add_node(name_to_id[node_name])
-            
-            # Add to state
-            app_state.add_group(group)
-        
-        # Build network from groups
-        builder = GroupNetworkBuilder()
-        expanded_config = builder.build_from_groups(config_data)
-        
-        # Import the expanded topology
-        if 'peers' in expanded_config:
-            for peer_data in expanded_config['peers']:
-                from_name = peer_data['from']
-                to_name = peer_data['to']
-                
-                if from_name in name_to_id and to_name in name_to_id:
-                    edge = EdgeModel(
-                        source_id=name_to_id[from_name],
-                        target_id=name_to_id[to_name],
-                        allowed_ips=peer_data.get('allowed_ips', [])
-                    )
-                    
-                    if 'endpoint' in peer_data:
-                        edge.metadata['endpoint_key'] = peer_data['endpoint']
-                    
-                    app_state.add_edge(edge)
-    
-    def _export_nodes_config(self, app_state: IAppState) -> Dict[str, Any]:
-        """Export nodes to CLI format."""
-        nodes_list = []
-        
-        for node in app_state.nodes.values():
-            node_data = {
-                'name': node.name,
-                'role': node.role
-            }
-            
-            # Add WireGuard IP if present
-            if node.wireguard_ip:
-                node_data['wireguard_ip'] = node.wireguard_ip
-            
-            # Add endpoint
-            if node.endpoint:
-                endpoint_name = node.metadata.get('endpoint_name', 'default')
-                node_data['endpoints'] = {endpoint_name: node.endpoint}
-            
-            # Add listen port if present
-            if 'listen_port' in node.metadata:
-                node_data['listen_port'] = node.metadata['listen_port']
-            
-            nodes_list.append(node_data)
-        
-        return {'nodes': nodes_list}
-    
-    def _export_topology_config(self, app_state: IAppState) -> Dict[str, Any]:
-        """Export topology to CLI format."""
-        peers_list = []
-        seen_pairs = set()
-        
-        for edge in app_state.edges.values():
-            # Get node names
-            source_node = app_state.nodes.get(edge.source_id)
-            target_node = app_state.nodes.get(edge.target_id)
-            
-            if not source_node or not target_node:
-                continue
-            
-            # Avoid duplicate edges (since GUI edges are directional but CLI peers are bidirectional)
-            pair = tuple(sorted([source_node.name, target_node.name]))
-            if pair in seen_pairs:
-                continue
-            seen_pairs.add(pair)
-            
-            peer_data = {
-                'from': source_node.name,
-                'to': target_node.name
-            }
-            
-            # Add allowed IPs if present
-            if edge.allowed_ips:
-                peer_data['allowed_ips'] = edge.allowed_ips
-            
-            # Add endpoint selection if not default
-            endpoint_key = edge.metadata.get('endpoint_key')
-            if endpoint_key and endpoint_key != 'default':
-                peer_data['endpoint'] = endpoint_key
-            
-            peers_list.append(peer_data)
-        
-        return {'peers': peers_list}
-    
-    def _export_group_config(self, app_state: IAppState) -> Dict[str, Any]:
-        """Export groups to CLI format."""
-        groups_list = []
-        
-        for group in app_state.groups.values():
-            # Get node names
-            node_names = []
-            for node_id in group.nodes:
-                node = app_state.nodes.get(node_id)
-                if node:
-                    node_names.append(node.name)
-            
-            group_data = {
-                'name': group.name,
-                'topology': group.topology,
-                'nodes': node_names
-            }
-            
-            # Add mesh endpoint if present
-            if group.mesh_endpoint:
-                group_data['endpoint'] = group.mesh_endpoint
-            
-            groups_list.append(group_data)
-        
-        return {'groups': groups_list} if groups_list else {}
+    def get_current_file(self) -> Optional[Path]:
+        """Get the current file path."""
+        return self.current_file

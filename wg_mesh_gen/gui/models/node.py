@@ -7,13 +7,11 @@ import ipaddress
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 
-from dataclasses import dataclass, field
 
 from .base import BaseModel
 from ..interfaces.models import INodeModel
 
 
-@dataclass
 class NodeModel(BaseModel, INodeModel):
     """Implementation of INodeModel for WireGuard nodes."""
     
@@ -40,7 +38,8 @@ class NodeModel(BaseModel, INodeModel):
             **kwargs: Additional arguments for BaseModel
         """
         # Initialize base model
-        super().__init__(**kwargs)
+        base_kwargs = {k: v for k, v in kwargs.items() if k in ['id', 'created_at', 'updated_at', 'metadata']}
+        super().__init__(**base_kwargs)
         
         # Set properties using setters for validation
         self.name = name

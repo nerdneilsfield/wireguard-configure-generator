@@ -7,7 +7,6 @@ Provides common functionality for all models including serialization and validat
 import json
 import uuid
 from abc import ABC
-from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from copy import deepcopy
@@ -15,31 +14,48 @@ from copy import deepcopy
 from ..interfaces.base import IModel
 
 
-@dataclass
 class BaseModel(IModel, ABC):
-    """Base implementation of IModel interface using dataclasses."""
+    """Base implementation of IModel interface."""
     
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def __post_init__(self):
-        """Perform post-initialization validation."""
+    def __init__(self, id: Optional[str] = None, created_at: Optional[datetime] = None,
+                 updated_at: Optional[datetime] = None, metadata: Optional[Dict[str, Any]] = None):
+        """Initialize base model."""
+        self._id = id or str(uuid.uuid4())
+        self._created_at = created_at or datetime.now()
+        self._updated_at = updated_at or datetime.now()
+        self._metadata = metadata or {}
+        
         # Ensure id is a string
-        if not isinstance(self.id, str):
-            self.id = str(self.id)
+        if not isinstance(self._id, str):
+            self._id = str(self._id)
         
         # Ensure timestamps are datetime objects
-        if isinstance(self.created_at, str):
-            self.created_at = datetime.fromisoformat(self.created_at)
-        if isinstance(self.updated_at, str):
-            self.updated_at = datetime.fromisoformat(self.updated_at)
+        if isinstance(self._created_at, str):
+            self._created_at = datetime.fromisoformat(self._created_at)
+        if isinstance(self._updated_at, str):
+            self._updated_at = datetime.fromisoformat(self._updated_at)
         
-        # Validate the model
-        errors = self.validate()
-        if errors:
-            raise ValueError(f"Validation errors: {'; '.join(errors)}")
+        # Skip validation during initialization - it will be done after setting properties
+    
+    @property
+    def id(self) -> str:
+        """Unique identifier for the model."""
+        return self._id
+    
+    @property
+    def created_at(self) -> datetime:
+        """Timestamp when the model was created."""
+        return self._created_at
+    
+    @property
+    def updated_at(self) -> datetime:
+        """Timestamp when the model was last updated."""
+        return self._updated_at
+    
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """Additional metadata for the model."""
+        return self._metadata
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -48,11 +64,16 @@ class BaseModel(IModel, ABC):
         Returns:
             Dict containing the model's data
         """
-        data = asdict(self)
+        # Get all public attributes
+        data = {}
+        for attr_name in dir(self):
+            if not attr_name.startswith('_') and not callable(getattr(self, attr_name)):
+                value = getattr(self, attr_name)
+                data[attr_name] = value
         
         # Convert datetime objects to ISO format strings
-        data['created_at'] = self.created_at.isoformat()
-        data['updated_at'] = self.updated_at.isoformat()
+        data['created_at'] = self._created_at.isoformat()
+        data['updated_at'] = self._updated_at.isoformat()
         
         # Remove None values and empty collections
         cleaned_data = {}
