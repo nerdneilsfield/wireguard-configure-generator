@@ -89,13 +89,19 @@ def main(host: str, port: int, reload: bool, dark_mode: bool,
     
     # Start the application
     logger.info(f"Starting GUI server on {host}:{port}")
+    
+    # Generate a storage secret for user sessions
+    import secrets
+    storage_secret = secrets.token_urlsafe(32)
+    
     ui.run(
         host=host,
         port=port,
         reload=reload,
         title='WireGuard Configuration Editor',
         favicon='🔐',
-        dark=dark_mode
+        dark=dark_mode,
+        storage_secret=storage_secret
     )
 
 
