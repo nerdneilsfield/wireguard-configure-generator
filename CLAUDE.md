@@ -111,3 +111,8 @@ python -m wg_mesh_gen.cli keys list
 
 ## Project Management Notes
 - This project is managed by uv, use uv to install and run, remember to use uv venv
+
+## Operational Notes
+
+- **Commit Practices**:
+  - Ensure code can be run everytime before committing

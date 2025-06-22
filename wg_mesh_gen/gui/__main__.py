@@ -64,22 +64,27 @@ def main(host: str, port: int, reload: bool, dark_mode: bool,
     app.native.window_args['title'] = 'WireGuard Configuration Editor'
     app.native.start_args['debug'] = reload
     
-    # Store app configuration
-    app.storage.user['config_dir'] = str(app_config_dir)
-    app.storage.user['dark_mode'] = dark_mode
-    
-    # Create application instance
+    # Create application instance with configuration
     editor_app = WireGuardEditorApp(config_dir=app_config_dir)
+    
+    # Store dark mode preference for use in pages
+    app_dark_mode = dark_mode
     
     # Define routes
     @ui.page('/')
     async def index():
         """Main application page."""
+        # Store app configuration in user storage within page context
+        app.storage.user['config_dir'] = str(app_config_dir)
+        app.storage.user['dark_mode'] = app_dark_mode
         await editor_app.create_ui()
     
     @ui.page('/session/{session_id}')
     async def session(session_id: str):
         """Session-specific page."""
+        # Store app configuration in user storage within page context
+        app.storage.user['config_dir'] = str(app_config_dir)
+        app.storage.user['dark_mode'] = app_dark_mode
         await editor_app.create_ui(session_id=session_id)
     
     # Start the application

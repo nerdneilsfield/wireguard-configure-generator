@@ -4,7 +4,7 @@ UI Components package for the WireGuard Visual Configuration Editor.
 This package contains NiceGUI-based implementations of the UI components.
 """
 
-from .cytoscape import CytoscapeWidget
+from .cytoscape_widget import CytoscapeWidget
 from .property_panel import PropertyPanel
 from .node_tree import NodeTree
 from .toolbar import ToolBar
