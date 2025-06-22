@@ -11,12 +11,12 @@ import tempfile
 import zipfile
 import tarfile
 from pathlib import Path
-from typing import Dict, List, Any, Optional, BinaryIO
+from typing import Dict, List, Any, Optional, BinaryIO, Tuple
 import json
 import yaml
 import mimetypes
 
-from ..interfaces.file_management import IFileManager
+from ..interfaces.file_management import IFileManager, FileType
 from ..interfaces.state import IAppState
 from ...logger import get_logger
 
@@ -127,7 +127,7 @@ class FileManager(IFileManager):
         if path.exists():
             path.unlink()
     
-    def detect_file_type(self, file_path: str) -> str:
+    def _detect_file_type_str(self, file_path: str) -> str:
         """
         Detect the type of configuration file using ConfigAdapter.
         
@@ -170,7 +170,33 @@ class FileManager(IFileManager):
             self._logger.error(f"Error detecting file type: {e}")
             return 'unknown'
     
-    def validate_file(self, file_path: str, expected_type: Optional[str] = None) -> List[str]:
+    def detect_file_type(self, file_path: Path) -> FileType:
+        """Detect the type of uploaded file (interface method)."""
+        str_type = self._detect_file_type_str(str(file_path))
+        type_mapping = {
+            'nodes': FileType.NODES_CONFIG,
+            'topology': FileType.TOPOLOGY_CONFIG,
+            'group_config': FileType.GROUP_CONFIG,
+            'wg_keys': FileType.KEY_DATABASE,
+            'wireguard': FileType.WIREGUARD_CONFIG,
+            'unknown': FileType.UNKNOWN
+        }
+        return type_mapping.get(str_type, FileType.UNKNOWN)
+    
+    def validate_file(self, file_path: Path, file_type: FileType) -> List[str]:
+        """Validate uploaded file content (interface method)."""
+        # Map FileType enum to string
+        type_mapping = {
+            FileType.NODES_CONFIG: 'nodes',
+            FileType.TOPOLOGY_CONFIG: 'topology',
+            FileType.GROUP_CONFIG: 'group_config',
+            FileType.KEY_DATABASE: 'wg_keys',
+            FileType.WIREGUARD_CONFIG: 'wireguard'
+        }
+        expected_type = type_mapping.get(file_type)
+        return self._validate_file_impl(str(file_path), expected_type)
+    
+    def _validate_file_impl(self, file_path: str, expected_type: Optional[str] = None) -> List[str]:
         """
         Validate a configuration file.
         
@@ -185,7 +211,7 @@ class FileManager(IFileManager):
         
         # Detect type if not specified
         if not expected_type:
-            expected_type = self.detect_file_type(file_path)
+            expected_type = self._detect_file_type_str(file_path)
             if expected_type == 'unknown':
                 errors.append("Unable to detect file type")
                 return errors
@@ -410,3 +436,48 @@ class FileManager(IFileManager):
             errors.append(f"Failed to validate keys file: {str(e)}")
         
         return errors
+    
+    # Interface method implementations for IFileManager
+    
+    def save_uploaded_file(self, file_data: BinaryIO, filename: str) -> Path:
+        """Save uploaded file to temporary location."""
+        file_path = self.upload_file(file_data, filename)
+        return Path(file_path)
+    
+    def create_download_file(self, content: str, filename: str, 
+                           content_type: str = 'text/plain') -> Tuple[Path, str]:
+        """Create a file for download."""
+        temp_path = Path(self.get_temp_directory()) / filename
+        temp_path.write_text(content, encoding='utf-8')
+        return temp_path, content_type
+    
+    def create_zip_archive(self, files: Dict[str, str], archive_name: str) -> Path:
+        """Create a ZIP archive of multiple files."""
+        temp_dir = Path(self.get_temp_directory())
+        archive_path = temp_dir / archive_name
+        
+        # Write files to temp directory
+        file_paths = {}
+        for filename, content in files.items():
+            file_path = temp_dir / filename
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(content, encoding='utf-8')
+            file_paths[filename] = str(file_path)
+        
+        # Create archive
+        self.create_archive(file_paths, str(archive_path), format='zip')
+        return archive_path
+    
+    def cleanup_temporary_files(self, session_id: str) -> None:
+        """Clean up temporary files for a session."""
+        # For now, just call the general cleanup
+        self.cleanup_temp_files(older_than_seconds=0)
+    
+    def get_file_size_limit(self) -> int:
+        """Get maximum allowed file size in bytes."""
+        return 10 * 1024 * 1024  # 10 MB
+    
+    def is_allowed_extension(self, filename: str) -> bool:
+        """Check if file extension is allowed."""
+        allowed_extensions = {'.yaml', '.yml', '.json', '.conf', '.txt'}
+        return Path(filename).suffix.lower() in allowed_extensions
