@@ -129,7 +129,7 @@ class FileManager(IFileManager):
     
     def detect_file_type(self, file_path: str) -> str:
         """
-        Detect the type of configuration file.
+        Detect the type of configuration file using ConfigAdapter.
         
         Args:
             file_path: Path to the file
@@ -140,57 +140,35 @@ class FileManager(IFileManager):
         self._logger.info(f"Detecting file type for: {file_path}")
         
         path = Path(file_path)
-        filename = path.name.lower()
-        extension = path.suffix.lower()
         
-        # Check by filename patterns
-        for file_type, config in self._file_types.items():
-            for pattern in config['patterns']:
-                if pattern in filename:
-                    self._logger.info(f"Detected file type by pattern: {file_type}")
-                    return file_type
+        # Special cases based on extension
+        if path.suffix == '.conf':
+            return 'wireguard'
         
-        # Check by content
+        # Special case for keys based on filename
+        if 'key' in path.name.lower():
+            return 'wg_keys'
+        
+        # Use ConfigAdapter for standard formats
         try:
-            with open(path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                
-            # Try to parse as YAML/JSON
-            try:
-                if extension in ['.yaml', '.yml']:
-                    data = yaml.safe_load(content)
-                elif extension == '.json':
-                    data = json.loads(content)
-                else:
-                    # Try both
-                    try:
-                        data = yaml.safe_load(content)
-                    except:
-                        data = json.loads(content)
-                
-                # Detect by content structure
-                if isinstance(data, dict):
-                    if 'nodes' in data and isinstance(data['nodes'], list):
-                        return 'nodes'
-                    elif 'peers' in data and isinstance(data['peers'], list):
-                        return 'topology'
-                    elif 'groups' in data and isinstance(data['groups'], list):
-                        return 'group_config'
-                    elif all(key.endswith('_private_key') or key.endswith('_public_key') 
-                            for key in data.keys()):
-                        return 'wg_keys'
-                
-            except Exception as e:
-                self._logger.debug(f"Failed to parse as YAML/JSON: {e}")
-                
-            # Check if it's a WireGuard config
-            if '[Interface]' in content or '[Peer]' in content:
-                return 'wireguard'
-                
+            from ...adapters import ConfigAdapter
+            config_adapter = ConfigAdapter(None)  # No CLI adapter needed for detection
+            
+            file_type = config_adapter.detect_file_type(path)
+            
+            # Map ConfigAdapter types to our internal types
+            type_mapping = {
+                'nodes': 'nodes',
+                'topology': 'topology', 
+                'group': 'group_config',
+                'unknown': 'unknown'
+            }
+            
+            return type_mapping.get(file_type, 'unknown')
+            
         except Exception as e:
             self._logger.error(f"Error detecting file type: {e}")
-        
-        return 'unknown'
+            return 'unknown'
     
     def validate_file(self, file_path: str, expected_type: Optional[str] = None) -> List[str]:
         """
@@ -342,142 +320,59 @@ class FileManager(IFileManager):
         return sanitized
     
     def _validate_nodes_file(self, file_path: str) -> List[str]:
-        """Validate a nodes configuration file."""
+        """Validate a nodes configuration file using CLI validators."""
         errors = []
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+            from ...adapters import ConfigAdapter, CLIAdapter
+            config_adapter = ConfigAdapter(CLIAdapter())
             
-            # Parse file
-            if file_path.endswith(('.yaml', '.yml')):
-                data = yaml.safe_load(content)
-            else:
-                data = json.loads(content)
+            # Use CLI loader which includes validation
+            nodes = config_adapter.load_nodes_file(Path(file_path))
             
-            # Check structure
-            if not isinstance(data, dict):
-                errors.append("File must contain a dictionary/object")
-                return errors
-            
-            if 'nodes' not in data:
-                errors.append("Missing 'nodes' field")
-                return errors
-            
-            if not isinstance(data['nodes'], list):
-                errors.append("'nodes' must be a list")
-                return errors
-            
-            # Validate each node
-            for i, node in enumerate(data['nodes']):
-                if not isinstance(node, dict):
-                    errors.append(f"Node {i}: must be a dictionary/object")
-                    continue
-                
-                if 'name' not in node:
-                    errors.append(f"Node {i}: missing required 'name' field")
-                
-                if 'role' in node and node['role'] not in ['client', 'relay']:
-                    errors.append(f"Node {i}: invalid role '{node['role']}'")
+            # If we got here, the file is valid
+            self._logger.info(f"Successfully validated nodes file with {len(nodes)} nodes")
             
         except Exception as e:
-            errors.append(f"Failed to parse file: {str(e)}")
+            errors.append(f"Validation failed: {str(e)}")
         
         return errors
     
     def _validate_topology_file(self, file_path: str) -> List[str]:
-        """Validate a topology configuration file."""
+        """Validate a topology configuration file using CLI validators."""
         errors = []
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+            from ...adapters import ConfigAdapter, CLIAdapter
+            config_adapter = ConfigAdapter(CLIAdapter())
             
-            # Parse file
-            if file_path.endswith(('.yaml', '.yml')):
-                data = yaml.safe_load(content)
-            else:
-                data = json.loads(content)
+            # Use CLI loader which includes validation
+            edges = config_adapter.load_topology_file(Path(file_path))
             
-            # Check structure
-            if not isinstance(data, dict):
-                errors.append("File must contain a dictionary/object")
-                return errors
-            
-            if 'peers' not in data:
-                errors.append("Missing 'peers' field")
-                return errors
-            
-            if not isinstance(data['peers'], list):
-                errors.append("'peers' must be a list")
-                return errors
-            
-            # Validate each peer
-            for i, peer in enumerate(data['peers']):
-                if not isinstance(peer, dict):
-                    errors.append(f"Peer {i}: must be a dictionary/object")
-                    continue
-                
-                if 'from' not in peer:
-                    errors.append(f"Peer {i}: missing required 'from' field")
-                
-                if 'to' not in peer:
-                    errors.append(f"Peer {i}: missing required 'to' field")
+            # If we got here, the file is valid
+            self._logger.info(f"Successfully validated topology file with {len(edges)} edges")
             
         except Exception as e:
-            errors.append(f"Failed to parse file: {str(e)}")
+            errors.append(f"Validation failed: {str(e)}")
         
         return errors
     
     def _validate_group_file(self, file_path: str) -> List[str]:
-        """Validate a group configuration file."""
+        """Validate a group configuration file using CLI validators."""
         errors = []
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+            from ...adapters import ConfigAdapter, CLIAdapter
+            config_adapter = ConfigAdapter(CLIAdapter())
             
-            # Parse file
-            if file_path.endswith(('.yaml', '.yml')):
-                data = yaml.safe_load(content)
-            else:
-                data = json.loads(content)
+            # Use CLI loader which includes validation
+            nodes, edges, groups = config_adapter.load_group_configuration(Path(file_path))
             
-            # Check structure
-            if not isinstance(data, dict):
-                errors.append("File must contain a dictionary/object")
-                return errors
-            
-            if 'groups' not in data:
-                errors.append("Missing 'groups' field")
-                return errors
-            
-            if not isinstance(data['groups'], list):
-                errors.append("'groups' must be a list")
-                return errors
-            
-            # Validate each group
-            valid_topologies = ['mesh', 'star', 'chain', 'single']
-            for i, group in enumerate(data['groups']):
-                if not isinstance(group, dict):
-                    errors.append(f"Group {i}: must be a dictionary/object")
-                    continue
-                
-                if 'name' not in group:
-                    errors.append(f"Group {i}: missing required 'name' field")
-                
-                if 'topology' not in group:
-                    errors.append(f"Group {i}: missing required 'topology' field")
-                elif group['topology'] not in valid_topologies:
-                    errors.append(f"Group {i}: invalid topology '{group['topology']}'")
-                
-                if 'nodes' not in group:
-                    errors.append(f"Group {i}: missing required 'nodes' field")
-                elif not isinstance(group['nodes'], list):
-                    errors.append(f"Group {i}: 'nodes' must be a list")
+            # If we got here, the file is valid
+            self._logger.info(f"Successfully validated group file with {len(groups)} groups")
             
         except Exception as e:
-            errors.append(f"Failed to parse file: {str(e)}")
+            errors.append(f"Validation failed: {str(e)}")
         
         return errors
     
@@ -486,32 +381,32 @@ class FileManager(IFileManager):
         errors = []
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+            from ...adapters import ConfigAdapter, CLIAdapter
+            config_adapter = ConfigAdapter(CLIAdapter())
             
-            # Must be JSON
-            try:
-                data = json.loads(content)
-            except:
-                errors.append("Keys file must be valid JSON")
-                return errors
+            # Load and validate structure
+            data = config_adapter.load_json_file(Path(file_path))
             
-            # Check structure
             if not isinstance(data, dict):
-                errors.append("File must contain a dictionary/object")
+                errors.append("Keys file must contain a dictionary")
                 return errors
             
-            # Validate each key entry
-            for key, value in data.items():
-                if not key.endswith('_private_key') and not key.endswith('_public_key'):
-                    errors.append(f"Invalid key name: {key}")
+            # Validate each entry  
+            for node_name, key_data in data.items():
+                if not isinstance(key_data, dict):
+                    errors.append(f"Key data for '{node_name}' must be a dictionary")
+                    continue
                 
-                if not isinstance(value, str):
-                    errors.append(f"Key value for '{key}' must be a string")
-                elif len(value) != 44:  # Base64 encoded 32-byte key
-                    errors.append(f"Key '{key}' has invalid length")
+                if 'private_key' not in key_data:
+                    errors.append(f"Missing 'private_key' for node '{node_name}'")
+                
+                if 'public_key' not in key_data:
+                    errors.append(f"Missing 'public_key' for node '{node_name}'")
+            
+            if not errors:
+                self._logger.info(f"Successfully validated keys file with {len(data)} entries")
             
         except Exception as e:
-            errors.append(f"Failed to parse file: {str(e)}")
+            errors.append(f"Failed to validate keys file: {str(e)}")
         
         return errors

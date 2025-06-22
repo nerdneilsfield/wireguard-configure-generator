@@ -118,13 +118,6 @@ class ConfigManager(IConfigManager):
     
     # Import Methods
     
-    def import_yaml(self, file_path: Path) -> IAppState:
-        """Import configuration from YAML file."""
-        return self.load_configuration(file_path)
-    
-    def import_json(self, file_path: Path) -> IAppState:
-        """Import configuration from JSON file."""
-        return self.load_configuration(file_path)
     
     def import_nodes(self, file_path: Path) -> List[NodeModel]:
         """Import nodes from file using CLI loader."""
@@ -252,9 +245,6 @@ class ConfigManager(IConfigManager):
         
         return self.cli_adapter.validate_configuration(nodes, edges)
     
-    def validate_files(self, nodes_file: Path, topology_file: Path) -> List[str]:
-        """Validate configuration files using CLI validator."""
-        return self.config_adapter.validate_configuration_files(nodes_file, topology_file)
     
     # Key Management
     

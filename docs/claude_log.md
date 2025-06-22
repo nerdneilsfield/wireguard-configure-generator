@@ -1,5 +1,48 @@
 # WireGuard Configure Generator 深度架构分析
 
+## 2025-06-22 06:30:00 - GUI Duplicate Code Removal and Phase 5 Progress
+
+### Summary
+Completed removal of all duplicate code from GUI implementation and made significant progress on Phase 5. The GUI now properly integrates with existing CLI functionality through a clean adapter pattern, eliminating all code duplication. This ensures consistency and maintainability by having a single source of truth for business logic.
+
+### Key Achievements
+
+1. **Adapter Pattern Implementation**
+   - Created comprehensive adapter architecture to bridge GUI and CLI
+   - `CLIAdapter`: Main adapter for node/edge/group conversions and CLI operations
+   - `ConfigAdapter`: Handles all file operations using CLI loaders
+   - `GroupAdapter`: Integrates with CLI's GroupNetworkBuilder
+
+2. **Duplicate Code Removal**
+   - Removed all reimplemented parsing/loading logic - now uses CLI loaders
+   - Eliminated duplicate validation code - uses CLI validators through adapters
+   - Removed redundant configuration building - uses CLI builders
+   - No duplicate key management - uses CLI's SimpleKeyStorage
+   - All business logic remains in CLI modules
+
+3. **Concrete Manager Implementations**
+   - `ValidationManager`: Delegates to CLI validators, adds only GUI-specific validations
+   - `GraphManager`: Uses NetworkX for graph operations, integrates with GroupAdapter
+   - `ConfigManager`: File operations through ConfigAdapter, no duplicate logic
+   - All managers follow single responsibility principle
+
+4. **Architecture Benefits**
+   - Single source of truth for business logic (CLI modules)
+   - GUI adds only UI-specific functionality
+   - Clean separation of concerns
+   - Easy to maintain - changes to business logic only need to be made once
+   - Consistent behavior between CLI and GUI
+
+### Technical Details
+
+The adapter pattern ensures:
+- GUI models (NodeModel, EdgeModel, GroupModel) implement interfaces with GUI-specific features
+- Adapters convert between GUI models and CLI data structures
+- All core operations (validation, building, rendering) use CLI functionality
+- No duplication of business logic or algorithms
+
+This refactoring addressed the user's critical feedback about avoiding duplicate implementations and ensures the codebase remains maintainable with a single implementation of each feature.
+
 ## 2025-06-22 04:55:00 - GUI Phase 4 Implementation: Integration and Polish
 
 ### Summary
