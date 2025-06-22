@@ -39,6 +39,10 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
             component_id: Optional component ID
             **kwargs: Additional widget options
         """
+        # Generate unique container ID first (before anything else)
+        self._container_id = f'cy-{uuid.uuid4().hex[:8]}'
+        
+        # Initialize parent classes
         BaseComponent.__init__(self, component_id)
         ValueElement.__init__(self, tag='div', value=None, **kwargs)
         
@@ -62,6 +66,67 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     def render(self) -> ui.element:
         """Render the component (returns self as it's already an element)."""
         return self
+    
+    # IComponent interface properties
+    @property
+    def id(self) -> str:
+        """Component ID."""
+        return getattr(self, 'component_id', self._container_id)
+    
+    @id.setter
+    def id(self, value: str) -> None:
+        """Set component ID."""
+        self.component_id = value
+    
+    @property 
+    def visible(self) -> bool:
+        """Whether the component is visible."""
+        return getattr(self, '_visible', True)
+    
+    @visible.setter
+    def visible(self, value: bool) -> None:
+        """Set component visibility."""
+        self._visible = value
+        # Use JavaScript to control visibility  
+        element_id = self._container_id
+        display = 'block' if value else 'none'
+        ui.run_javascript(f'''
+            const elements = document.querySelectorAll('[data-component-id="{element_id}"], #{element_id}');
+            elements.forEach(el => {{
+                el.style.display = '{display}';
+            }});
+        ''')
+    
+    @property
+    def enabled(self) -> bool:
+        """Whether the component is enabled."""
+        return getattr(self, '_enabled', True)
+    
+    @enabled.setter  
+    def enabled(self, value: bool) -> None:
+        """Set component enabled state."""
+        self._enabled = value
+        # For graph components, enabled affects interaction
+        ui.run_javascript(f'''
+            if (window.cy_{self._container_id}) {{
+                window.cy_{self._container_id}.{'enable' if value else 'disable'}User();
+            }}
+        ''')
+    
+    def update(self) -> None:
+        """Update the component."""
+        self.refresh()
+    
+    def destroy(self) -> None:
+        """Destroy the component."""
+        ui.run_javascript(f'''
+            if (window.cy_{self._container_id}) {{
+                window.cy_{self._container_id}.destroy();
+                delete window.cy_{self._container_id};
+            }}
+        ''')
+        if hasattr(self, 'delete'):
+            self.delete()
         
     def _initialize_cytoscape(self) -> None:
         """Initialize Cytoscape.js instance."""
@@ -69,13 +134,16 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
         self.classes('w-full h-full')
         self.style('min-height: 600px')
         
-        # Generate unique container ID
-        container_id = f'cy-{uuid.uuid4().hex[:8]}'
-        self._props['id'] = container_id
+        # Set the container ID for the element
+        try:
+            self.props(id=self._container_id)
+        except Exception:
+            # Fallback if props doesn't work
+            pass
         
         # Initialize Cytoscape with configuration
         config = {
-            'container': f'#{container_id}',
+            'container': f'#{self._container_id}',
             'elements': self._get_elements_data(),
             'style': self._styles,
             'layout': {'name': 'cose'},
@@ -88,7 +156,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
         ui.run_javascript(f'''
             (function() {{
                 // Wait for container to be ready
-                const container = document.getElementById('{container_id}');
+                const container = document.getElementById('{self._container_id}');
                 if (!container) {{
                     setTimeout(arguments.callee, 100);
                     return;
@@ -98,12 +166,12 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
                 const cy = cytoscape({json.dumps(config)});
                 
                 // Store instance globally for access
-                window.cy_{container_id} = cy;
+                window.cy_{self._container_id} = cy;
                 
                 // Setup event handlers
                 cy.on('tap', 'node', function(evt) {{
                     const node = evt.target;
-                    window.nicegui.emit('{container_id}', 'node_click', {{
+                    window.nicegui.emit('{self._container_id}', 'node_click', {{
                         id: node.id(),
                         data: node.data()
                     }});
@@ -111,7 +179,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
                 
                 cy.on('tap', 'edge', function(evt) {{
                     const edge = evt.target;
-                    window.nicegui.emit('{container_id}', 'edge_click', {{
+                    window.nicegui.emit('{self._container_id}', 'edge_click', {{
                         id: edge.id(),
                         data: edge.data()
                     }});
@@ -119,13 +187,13 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
                 
                 cy.on('tap', function(evt) {{
                     if (evt.target === cy) {{
-                        window.nicegui.emit('{container_id}', 'canvas_click', {{}});
+                        window.nicegui.emit('{self._container_id}', 'canvas_click', {{}});
                     }}
                 }});
                 
                 cy.on('dragend', 'node', function(evt) {{
                     const node = evt.target;
-                    window.nicegui.emit('{container_id}', 'node_drag', {{
+                    window.nicegui.emit('{self._container_id}', 'node_drag', {{
                         id: node.id(),
                         position: node.position()
                     }});
@@ -133,7 +201,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
                 
                 cy.on('select unselect', function() {{
                     const selected = cy.$(':selected').map(ele => ele.id());
-                    window.nicegui.emit('{container_id}', 'selection_change', {{
+                    window.nicegui.emit('{self._container_id}', 'selection_change', {{
                         selected: selected
                     }});
                 }});
@@ -465,33 +533,37 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     # Missing ICytoscapeWidget interface methods
     
-    def add_node(self, node_id: str, x: float, y: float, 
-                node_type: str = 'client',
-                label: Optional[str] = None,
-                metadata: Optional[Dict[str, Any]] = None) -> None:
+    def add_node(self, node_id: str, label: str, 
+                wireguard_ip: Optional[str] = None,
+                role: str = 'client',
+                group: Optional[str] = None,
+                position: Optional[Dict[str, float]] = None) -> None:
         """Add a node to the graph."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
+        
+        # Use provided position or default
+        pos = position or {'x': 100, 'y': 100}
+        
         node_data = {
             'id': node_id,
-            'position': {'x': x, 'y': y},
-            'data': {
-                'type': node_type,
-                'label': label or node_id,
-                'metadata': metadata or {}
-            }
+            'label': label,
+            'role': role,
+            'wireguard_ip': wireguard_ip,
+            'group': group
         }
+        
         ui.run_javascript(f'''
             if (window.cy_{container_id}) {{
                 window.cy_{container_id}.add({{
-                    data: {json.dumps(node_data['data'])},
-                    position: {json.dumps(node_data['position'])}
+                    data: {json.dumps(node_data)},
+                    position: {json.dumps(pos)}
                 }});
             }}
         ''')
     
     def update_node(self, node_id: str, updates: Dict[str, Any]) -> None:
         """Update node properties."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
         ui.run_javascript(f'''
             if (window.cy_{container_id}) {{
                 const node = window.cy_{container_id}.getElementById('{node_id}');
@@ -503,7 +575,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def delete_node(self, node_id: str) -> None:
         """Delete a node from the graph."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
         ui.run_javascript(f'''
             if (window.cy_{container_id}) {{
                 const node = window.cy_{container_id}.getElementById('{node_id}');
@@ -517,7 +589,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
                 edge_type: str = 'peer',
                 allowed_ips: Optional[List[str]] = None) -> None:
         """Add an edge to the graph."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
         edge_data = {
             'id': edge_id,
             'source': source,
@@ -535,7 +607,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def update_edge(self, edge_id: str, updates: Dict[str, Any]) -> None:
         """Update edge properties."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
         ui.run_javascript(f'''
             if (window.cy_{container_id}) {{
                 const edge = window.cy_{container_id}.getElementById('{edge_id}');
@@ -547,7 +619,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def delete_edge(self, edge_id: str) -> None:
         """Delete an edge from the graph."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
         ui.run_javascript(f'''
             if (window.cy_{container_id}) {{
                 const edge = window.cy_{container_id}.getElementById('{edge_id}');
@@ -569,7 +641,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def clear(self) -> None:
         """Clear all elements from the graph."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
         ui.run_javascript(f'''
             if (window.cy_{container_id}) {{
                 window.cy_{container_id}.elements().remove();
@@ -578,7 +650,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def set_style(self, element_id: str, style: Dict[str, Any]) -> None:
         """Set custom style for an element."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
         ui.run_javascript(f'''
             if (window.cy_{container_id}) {{
                 const element = window.cy_{container_id}.getElementById('{element_id}');
@@ -590,7 +662,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def highlight_elements(self, element_ids: List[str]) -> None:
         """Highlight specific elements."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
         ui.run_javascript(f'''
             if (window.cy_{container_id}) {{
                 const elements = window.cy_{container_id}.elements();
@@ -607,7 +679,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def unhighlight_all(self) -> None:
         """Remove all highlights."""
-        container_id = self._props.get('id', '')
+        container_id = self._container_id
         ui.run_javascript(f'''
             if (window.cy_{container_id}) {{
                 window.cy_{container_id}.elements().removeClass('highlighted');

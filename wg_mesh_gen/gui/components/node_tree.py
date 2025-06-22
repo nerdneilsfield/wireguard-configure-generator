@@ -310,9 +310,11 @@ class NodeTree(BaseComponent, INodeTree):
             self._expanded_groups.discard(node_id)
             self._build_tree()
     
-    def get_selected(self) -> Optional[str]:
-        """Get selected node ID."""
-        return self._selected_node_id
+    def get_selected(self) -> List[str]:
+        """Get selected node IDs."""
+        if self._selected_node_id:
+            return [self._selected_node_id]
+        return []
     
     def move_node(self, node_id: str, new_parent_id: Optional[str]) -> None:
         """Move a node to a new parent (group)."""
@@ -325,7 +327,9 @@ class NodeTree(BaseComponent, INodeTree):
         # This would be used for drag-and-drop support
         pass
     
-    def on_selection_change(self, handler: Callable[[Optional[str]], None]) -> None:
+    def on_selection_change(self, handler: Callable[[List[str]], None]) -> None:
         """Register selection change handler."""
-        # This is basically the same as on_node_select
-        self.on_node_select(handler)
+        # Wrap single node handler to work with list
+        def wrapped_handler(node_id: str) -> None:
+            handler([node_id] if node_id else [])
+        self.on_node_select(wrapped_handler)

@@ -49,9 +49,12 @@ class ImportWizard(IImportWizard):
         self._validation_manager = validation_manager
         self._sessions: Dict[str, ImportSession] = {}
     
-    def start_import(self) -> str:
+    def start_import(self, file_paths: List[Path]) -> str:
         """
         Start a new import session.
+        
+        Args:
+            file_paths: List of file paths to import
         
         Returns:
             Session ID
@@ -59,7 +62,15 @@ class ImportWizard(IImportWizard):
         import uuid
         session_id = str(uuid.uuid4())
         self._sessions[session_id] = ImportSession(session_id=session_id)
-        self._logger.info(f"Started import session: {session_id}")
+        
+        # Add all provided files to the session
+        for file_path in file_paths:
+            try:
+                self.add_file(session_id, str(file_path))
+            except Exception as e:
+                self._logger.error(f"Failed to add file {file_path}: {e}")
+        
+        self._logger.info(f"Started import session: {session_id} with {len(file_paths)} files")
         return session_id
     
     def add_file(self, session_id: str, file_path: str, file_type: Optional[str] = None) -> None:

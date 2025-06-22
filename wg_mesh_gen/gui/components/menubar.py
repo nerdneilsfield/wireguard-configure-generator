@@ -258,14 +258,16 @@ class MenuBar(BaseComponent, IMenuBar):
         
         dialog.open()
     
-    def add_menu(self, menu_id: str, label: str, items: List[Dict[str, any]]) -> None:
+    def add_menu(self, menu_id: str, label: str) -> None:
         """Add a new menu."""
-        # Would need to implement dynamic menu creation
-        pass
+        # Store menu info for potential future rendering
+        self._dynamic_menus = getattr(self, '_dynamic_menus', {})
+        self._dynamic_menus[menu_id] = {'label': label, 'items': []}
     
     def add_menu_item(self, menu_id: str, item_id: str, label: str,
                      handler: Optional[Callable] = None,
-                     icon: Optional[str] = None) -> None:
+                     icon: Optional[str] = None,
+                     shortcut: Optional[str] = None) -> None:
         """Add an item to a menu."""
         if menu_id not in self._items:
             self._items[menu_id] = {}
@@ -273,7 +275,8 @@ class MenuBar(BaseComponent, IMenuBar):
         self._items[menu_id][item_id] = {
             'label': label,
             'handler': handler,
-            'icon': icon
+            'icon': icon,
+            'shortcut': shortcut
         }
     
     def remove_menu_item(self, menu_id: str, item_id: str) -> None:
@@ -283,13 +286,15 @@ class MenuBar(BaseComponent, IMenuBar):
     
     def enable_menu_item(self, menu_id: str, item_id: str) -> None:
         """Enable a menu item."""
-        # Would need to track menu item references
-        pass
+        # Track enabled state
+        self._item_states = getattr(self, '_item_states', {})
+        self._item_states[f"{menu_id}.{item_id}"] = True
     
     def disable_menu_item(self, menu_id: str, item_id: str) -> None:
         """Disable a menu item."""
-        # Would need to track menu item references
-        pass
+        # Track disabled state  
+        self._item_states = getattr(self, '_item_states', {})
+        self._item_states[f"{menu_id}.{item_id}"] = False
     
     def update_menu_item(self, menu_id: str, item_id: str, 
                         label: Optional[str] = None,

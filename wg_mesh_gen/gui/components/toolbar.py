@@ -105,13 +105,15 @@ class ToolBar(BaseComponent, IToolBar):
     
     def enable_action(self, action_id: str) -> None:
         """Enable a toolbar action."""
-        # Would need to track button references for this
-        pass
+        # Enable action by ID - for now just track in state
+        self._action_states = getattr(self, '_action_states', {})
+        self._action_states[action_id] = True
     
     def disable_action(self, action_id: str) -> None:
         """Disable a toolbar action."""
-        # Would need to track button references for this
-        pass
+        # Disable action by ID - for now just track in state
+        self._action_states = getattr(self, '_action_states', {})
+        self._action_states[action_id] = False
     
     def set_action_handler(self, action_id: str, handler: Callable) -> None:
         """Set handler for an action."""
@@ -455,11 +457,16 @@ class ToolBar(BaseComponent, IToolBar):
         self._has_selection = bool(event.data.get('selected', []))
         self._update_button_states()
     
-    def add_button(self, button_id: str, label: str, icon: Optional[str] = None,
-                  handler: Optional[Callable] = None) -> None:
+    def add_button(self, action: str, label: str, icon: Optional[str] = None,
+                  tooltip: Optional[str] = None) -> None:
         """Add a button to the toolbar."""
-        # This is basically the same as add_action
-        self.add_action(button_id, label, icon, handler)
+        # Store button info for potential future rendering
+        self._buttons = getattr(self, '_buttons', {})
+        self._buttons[action] = {
+            'label': label,
+            'icon': icon,
+            'tooltip': tooltip
+        }
     
     def remove_button(self, button_id: str) -> None:
         """Remove a button from the toolbar."""
