@@ -585,6 +585,182 @@ Cross-border network with relay nodes
 </tr>
 </table>
 
+## GUI - Visual Configuration Editor
+
+The WireGuard Configuration Generator includes a powerful web-based GUI for visual network configuration and management.
+
+### Features
+
+- 🎨 **Interactive Network Visualization**: Drag-and-drop network design with Cytoscape.js
+- 📊 **Real-time Configuration**: Edit nodes, edges, and groups with instant validation
+- 🔍 **Advanced Search**: Find nodes by name, IP, endpoint, or group membership  
+- 📈 **Performance Optimization**: Handles large networks with caching and LOD rendering
+- 💾 **Import/Export**: Support for all configuration formats (YAML, JSON, WireGuard)
+- 🎯 **Smart Layouts**: Multiple layout algorithms for optimal visualization
+- 🔧 **Property Editing**: Comprehensive property panels for all network elements
+
+### Starting the GUI
+
+```bash
+# Start the GUI server
+python -m wg_mesh_gen.gui
+
+# Specify custom host and port
+python -m wg_mesh_gen.gui --host 0.0.0.0 --port 8080
+
+# Enable dark mode
+python -m wg_mesh_gen.gui --dark
+
+# Development mode with auto-reload
+python -m wg_mesh_gen.gui --reload
+```
+
+The GUI will be available at `http://localhost:8000` by default.
+
+### GUI Architecture
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        A[Cytoscape.js Visualization]
+        B[Property Panels]
+        C[Toolbar & Controls]
+        D[Search & Filter]
+    end
+    
+    subgraph "Component Layer"
+        E[CytoscapeWidget]
+        F[PropertyPanel]
+        G[GraphControls]
+        H[SearchPanel]
+    end
+    
+    subgraph "Manager Layer"
+        I[GraphManager]
+        J[ConfigManager]
+        K[ValidationManager]
+        L[CommandManager]
+    end
+    
+    subgraph "Adapter Layer"
+        M[CLIAdapter]
+        N[ConfigAdapter]
+        O[GroupAdapter]
+    end
+    
+    subgraph "CLI Core"
+        P[Existing CLI Functionality]
+    end
+    
+    A --> E
+    B --> F
+    C --> G
+    D --> H
+    
+    E --> I
+    F --> J
+    G --> I
+    H --> I
+    
+    I --> M
+    J --> N
+    K --> M
+    L --> J
+    
+    M --> P
+    N --> P
+    O --> P
+```
+
+### GUI Usage Guide
+
+#### 1. Creating a Network
+
+1. **Add Nodes**: Click the "Add Node" button or right-click on the canvas
+2. **Configure Node**: 
+   - Set name and WireGuard IP
+   - Choose role (client/relay)
+   - Add endpoints for relay nodes
+3. **Connect Nodes**: 
+   - Click and drag between nodes to create connections
+   - Or use the toolbar connection tool
+
+#### 2. Working with Groups
+
+1. **Create Group**: Use the toolbar or right-click menu
+2. **Add Members**: Drag nodes into the group
+3. **Set Topology**: Choose mesh, star, chain, or single
+4. **Apply Layout**: Auto-arrange nodes based on topology
+
+#### 3. Import/Export
+
+**Import Options:**
+- Drag and drop configuration files onto the canvas
+- Use File → Import menu
+- Support for nodes.yaml, topology.yaml, and group configurations
+
+**Export Options:**
+- File → Export → WireGuard Configs
+- File → Export → YAML/JSON
+- File → Export → Network Diagram (PNG)
+
+#### 4. Advanced Features
+
+**Search and Filter:**
+```
+- Search by name: "relay"
+- Search by IP: "10.96"
+- Search by endpoint: "example.com"
+- Filter by role or edge type
+```
+
+**Keyboard Shortcuts:**
+- `Ctrl+S`: Save configuration
+- `Ctrl+O`: Open file
+- `Ctrl+Z/Y`: Undo/Redo
+- `Delete`: Remove selected
+- `Ctrl+A`: Select all
+- `F`: Fit to viewport
+- `Ctrl+F`: Focus search
+
+**Performance Settings:**
+- For networks > 100 nodes: Enable "Performance Mode" in settings
+- Adjust LOD (Level of Detail) thresholds
+- Toggle animations for better performance
+
+#### 5. Validation and Testing
+
+The GUI provides real-time validation:
+- ✅ IP address conflicts
+- ✅ Subnet overlaps  
+- ✅ Missing required fields
+- ✅ Invalid endpoint formats
+- ✅ Topology constraints
+
+Use the "Validate" button to run comprehensive checks before exporting.
+
+### GUI Components
+
+| Component | Description | Features |
+|-----------|-------------|----------|
+| **CytoscapeWidget** | Main network visualization | Drag/drop, zoom/pan, selection |
+| **PropertyPanel** | Element property editor | Validation, dynamic forms |
+| **GraphControls** | Visualization controls | Zoom, layouts, view presets |
+| **SearchPanel** | Search and filter | Full-text search, filters |
+| **Minimap** | Network overview | Navigation, viewport indicator |
+| **Toolbar** | Main actions | Add/remove, import/export |
+| **StatusBar** | System status | Node/edge count, validation |
+
+### Performance Tips
+
+For large networks (>500 nodes):
+
+1. **Use Performance Mode**: Settings → Performance → Enable
+2. **Disable Animations**: View → Toggle Animations
+3. **Hide Labels**: View → Toggle Labels
+4. **Use Fast Layouts**: Prefer "Grid" or "Circle" over "Force-Directed"
+5. **Progressive Loading**: Import in batches for very large configs
+
 ## Testing
 
 ```bash
