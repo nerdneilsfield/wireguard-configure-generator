@@ -16,7 +16,7 @@ from ..interfaces.models import INodeModel, IEdgeModel, IGroupModel
 from ..adapters import CLIAdapter
 
 # Import validation functions from main library
-from ...validator import validate_business_logic, validate_node_connectivity, ValidationContext
+from ...validator import validate_business_logic, validate_node_connectivity
 from ...logger import get_logger
 
 logger = get_logger()
@@ -302,7 +302,7 @@ class ValidationManager(IValidationManager):
     
     def get_validation_context(self, state: IAppState) -> Dict[str, Any]:
         """Get validation context for the current state."""
-        # Create a ValidationContext compatible with CLI
+        # Create a validation context compatible with CLI
         nodes = list(state.nodes.values())
         edges = list(state.edges.values())
         
@@ -310,16 +310,15 @@ class ValidationManager(IValidationManager):
         cli_nodes = [self.cli_adapter.node_model_to_cli(node) for node in nodes]
         cli_peers = [self.cli_adapter.edge_model_to_cli(edge) for edge in edges]
         
-        # Create context using CLI's ValidationContext
-        context = ValidationContext(cli_nodes, cli_peers)
-        
+        # Create context dictionary
         return {
             'node_count': len(state.nodes),
             'edge_count': len(state.edges),
             'group_count': len(state.groups),
+            'nodes': cli_nodes,
+            'peers': cli_peers,
             'has_relay_nodes': any(node.role == 'relay' for node in state.nodes.values()),
-            'has_groups': len(state.groups) > 0,
-            'cli_context': context  # Include CLI context for compatibility
+            'has_groups': len(state.groups) > 0
         }
     
     def _initialize_validation_rules(self) -> Dict[str, List[Any]]:
