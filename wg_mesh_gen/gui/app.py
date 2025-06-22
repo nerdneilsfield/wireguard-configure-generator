@@ -120,9 +120,9 @@ class WireGuardEditorApp:
             with ui.column().classes('flex-grow h-full'):
                 # Graph container
                 cytoscape = CytoscapeWidget(
-                    session['app_state'],
-                    height="calc(100vh - 140px)"
+                    session['app_state']
                 )
+                cytoscape.style('height: calc(100vh - 140px)')
                 cytoscape.render()
                 self.ui_components['cytoscape'] = cytoscape
                 

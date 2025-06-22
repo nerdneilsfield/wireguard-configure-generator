@@ -42,7 +42,7 @@ class ToolBar(BaseComponent, IToolBar):
     
     def render(self) -> ui.element:
         """Render the toolbar."""
-        with ui.toolbar().classes('bg-primary') as self._element:
+        with ui.row().classes('bg-primary p-2 gap-2') as self._element:
             # File actions
             with ui.button_group().props('flat'):
                 self._add_action('new', 'New', 'add', self._handle_new)
@@ -454,3 +454,21 @@ class ToolBar(BaseComponent, IToolBar):
         """Handle selection change."""
         self._has_selection = bool(event.data.get('selected', []))
         self._update_button_states()
+    
+    def add_button(self, button_id: str, label: str, icon: Optional[str] = None,
+                  handler: Optional[Callable] = None) -> None:
+        """Add a button to the toolbar."""
+        # This is basically the same as add_action
+        self.add_action(button_id, label, icon, handler)
+    
+    def remove_button(self, button_id: str) -> None:
+        """Remove a button from the toolbar."""
+        # This is basically the same as remove_action
+        self.remove_action(button_id)
+    
+    def set_button_enabled(self, button_id: str, enabled: bool) -> None:
+        """Set whether a button is enabled."""
+        if enabled:
+            self.enable_action(button_id)
+        else:
+            self.disable_action(button_id)

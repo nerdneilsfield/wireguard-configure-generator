@@ -481,3 +481,191 @@ class ExportManager(IExportManager):
         # Write README
         with open(readme_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(content))
+    
+    # Missing interface methods implementation
+    
+    def export_project_config(self, state: IAppState, format: str = 'yaml') -> Dict[str, str]:
+        """Export current project configuration."""
+        files = {}
+        
+        # Export nodes
+        if state.nodes:
+            filename = f'nodes.{format}'
+            content = self.export_nodes(state, format)
+            files[filename] = content
+        
+        # Export topology
+        if state.edges:
+            filename = f'topology.{format}'
+            content = self.export_topology(state, format)
+            files[filename] = content
+        
+        # Export groups if any
+        if state.groups:
+            filename = f'groups.{format}'
+            content = self.export_groups(state, format)
+            files[filename] = content
+        
+        return files
+    
+    def export_wireguard_configs(self, state: IAppState, 
+                               include_scripts: bool = True) -> Dict[str, str]:
+        """Generate and export WireGuard configurations."""
+        files = {}
+        
+        # Generate configs using ConfigManager
+        temp_dir = self._file_manager.get_temp_directory()
+        config_files = self._config_manager.generate_wireguard_configs(state, Path(temp_dir))
+        
+        # Read generated files
+        for node_name, file_path in config_files.items():
+            content = file_path.read_text()
+            files[f'{node_name}.conf'] = content
+        
+        # Include setup scripts if requested
+        if include_scripts:
+            files['setup.sh'] = self._generate_setup_script(state)
+            files['teardown.sh'] = self._generate_teardown_script(state)
+        
+        return files
+    
+    def export_key_database(self, state: IAppState) -> str:
+        """Export key database."""
+        keys = {}
+        
+        # Extract keys from nodes
+        for node in state.nodes.values():
+            if 'private_key' in node.metadata or 'public_key' in node.metadata:
+                keys[node.name] = {
+                    'private_key': node.metadata.get('private_key', ''),
+                    'public_key': node.metadata.get('public_key', '')
+                }
+        
+        return json.dumps(keys, indent=2)
+    
+    def create_export_package(self, state: IAppState, 
+                            options: Dict[str, bool]) -> Path:
+        """Create complete export package."""
+        # Create temporary directory for package
+        temp_dir = Path(self._file_manager.get_temp_directory())
+        package_dir = temp_dir / 'wireguard_config_export'
+        package_dir.mkdir(exist_ok=True)
+        
+        # Export configurations if requested
+        if options.get('include_config', True):
+            config_files = self.export_project_config(state)
+            for filename, content in config_files.items():
+                (package_dir / filename).write_text(content)
+        
+        # Export WireGuard configs if requested
+        if options.get('include_wireguard', True):
+            wg_dir = package_dir / 'wireguard'
+            wg_dir.mkdir(exist_ok=True)
+            wg_files = self.export_wireguard_configs(state, include_scripts=True)
+            for filename, content in wg_files.items():
+                (wg_dir / filename).write_text(content)
+        
+        # Export keys if requested
+        if options.get('include_keys', True):
+            keys_content = self.export_key_database(state)
+            (package_dir / 'wg_keys.json').write_text(keys_content)
+        
+        # Create README
+        self._create_package_readme(package_dir / 'README.md', state, True)
+        
+        # Create ZIP archive
+        archive_path = temp_dir / 'wireguard_config_export.zip'
+        import shutil
+        shutil.make_archive(str(archive_path.with_suffix('')), 'zip', package_dir)
+        
+        return archive_path
+    
+    def export_visualization(self, state: IAppState, 
+                           format: str = 'png') -> bytes:
+        """Export network visualization."""
+        # This would integrate with the visualization component
+        # For now, return empty bytes as placeholder
+        self._logger.warning(f"Visualization export for format {format} not yet implemented")
+        return b''
+    
+    def get_export_preview(self, state: IAppState, 
+                         options: Dict[str, bool]) -> Dict[str, Any]:
+        """Get preview of what will be exported."""
+        preview = {
+            'files': [],
+            'total_size': 0,
+            'node_count': len(state.nodes),
+            'edge_count': len(state.edges),
+            'group_count': len(state.groups)
+        }
+        
+        # Preview configuration files
+        if options.get('include_config', True):
+            if state.nodes:
+                preview['files'].append({'name': 'nodes.yaml', 'type': 'config'})
+            if state.edges:
+                preview['files'].append({'name': 'topology.yaml', 'type': 'config'})
+            if state.groups:
+                preview['files'].append({'name': 'groups.yaml', 'type': 'config'})
+        
+        # Preview WireGuard configs
+        if options.get('include_wireguard', True):
+            for node in state.nodes.values():
+                preview['files'].append({'name': f'{node.name}.conf', 'type': 'wireguard'})
+            preview['files'].append({'name': 'setup.sh', 'type': 'script'})
+            preview['files'].append({'name': 'teardown.sh', 'type': 'script'})
+        
+        # Preview keys
+        if options.get('include_keys', True):
+            preview['files'].append({'name': 'wg_keys.json', 'type': 'keys'})
+        
+        # README is always included
+        preview['files'].append({'name': 'README.md', 'type': 'documentation'})
+        
+        return preview
+    
+    def _generate_setup_script(self, state: IAppState) -> str:
+        """Generate setup script for WireGuard interfaces."""
+        lines = [
+            "#!/bin/bash",
+            "# WireGuard Setup Script",
+            f"# Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+            "set -e",
+            "",
+            "echo 'Setting up WireGuard interfaces...'",
+            ""
+        ]
+        
+        for node in state.nodes.values():
+            lines.extend([
+                f"# Setup {node.name}",
+                f"echo 'Starting {node.name}...'",
+                f"wg-quick up {node.name}",
+                ""
+            ])
+        
+        lines.append("echo 'All interfaces started successfully!'")
+        return '\n'.join(lines)
+    
+    def _generate_teardown_script(self, state: IAppState) -> str:
+        """Generate teardown script for WireGuard interfaces."""
+        lines = [
+            "#!/bin/bash",
+            "# WireGuard Teardown Script",
+            f"# Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+            "echo 'Stopping WireGuard interfaces...'",
+            ""
+        ]
+        
+        for node in state.nodes.values():
+            lines.extend([
+                f"# Stop {node.name}",
+                f"echo 'Stopping {node.name}...'",
+                f"wg-quick down {node.name} || true",
+                ""
+            ])
+        
+        lines.append("echo 'All interfaces stopped!'")
+        return '\n'.join(lines)

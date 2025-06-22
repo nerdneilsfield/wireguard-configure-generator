@@ -295,3 +295,37 @@ class NodeTree(BaseComponent, INodeTree):
             for item in self._tree_items.values():
                 if hasattr(item, 'classes'):
                     item.classes(remove='bg-blue-50')
+    
+    # Missing interface methods implementation
+    
+    def expand_node(self, node_id: str) -> None:
+        """Expand a node (for groups)."""
+        if node_id in self._app_state.groups:
+            self._expanded_groups.add(node_id)
+            self._build_tree()
+    
+    def collapse_node(self, node_id: str) -> None:
+        """Collapse a node (for groups)."""
+        if node_id in self._app_state.groups:
+            self._expanded_groups.discard(node_id)
+            self._build_tree()
+    
+    def get_selected(self) -> Optional[str]:
+        """Get selected node ID."""
+        return self._selected_node_id
+    
+    def move_node(self, node_id: str, new_parent_id: Optional[str]) -> None:
+        """Move a node to a new parent (group)."""
+        # Implementation would handle moving nodes between groups
+        # For now, we'll just rebuild the tree
+        self._build_tree()
+    
+    def on_node_drop(self, handler: Callable[[str, Optional[str]], None]) -> None:
+        """Register handler for node drop events."""
+        # This would be used for drag-and-drop support
+        pass
+    
+    def on_selection_change(self, handler: Callable[[Optional[str]], None]) -> None:
+        """Register selection change handler."""
+        # This is basically the same as on_node_select
+        self.on_node_select(handler)

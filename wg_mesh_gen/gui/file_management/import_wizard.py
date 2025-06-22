@@ -442,3 +442,65 @@ class ImportWizard(IImportWizard):
                     node.metadata['public_key'] = keys['public_key']
                 
                 self._logger.info(f"Imported keys for node: {node.name}")
+    
+    # Missing interface methods implementation
+    
+    def cleanup_import_session(self, session_id: str) -> None:
+        """Clean up import session data."""
+        if session_id in self._sessions:
+            session = self._sessions[session_id]
+            # Clean up temporary files
+            for file_path in session.files.values():
+                try:
+                    Path(file_path).unlink(missing_ok=True)
+                except Exception as e:
+                    self._logger.error(f"Failed to clean up file {file_path}: {e}")
+            
+            # Remove session
+            del self._sessions[session_id]
+            self._logger.info(f"Cleaned up import session: {session_id}")
+    
+    def detect_import_type(self, session_id: str) -> Dict[str, Any]:
+        """Detect and analyze import configuration."""
+        session = self._get_session(session_id)
+        
+        # Detect file types for each file
+        file_types = {}
+        for file_path in session.files.values():
+            file_type = self._file_manager.detect_file_type(Path(file_path))
+            file_types[file_path] = file_type.value
+        
+        # Determine import type
+        import_type = 'traditional'
+        if any(ft == 'group' for ft in file_types.values()):
+            import_type = 'group'
+        
+        # Generate warnings and suggestions
+        warnings = []
+        suggestions = []
+        
+        if import_type == 'traditional':
+            if 'nodes' not in file_types.values():
+                warnings.append("No nodes configuration file detected")
+                suggestions.append("Add a nodes.yaml file to define network nodes")
+            if 'topology' not in file_types.values():
+                warnings.append("No topology configuration file detected")
+                suggestions.append("Add a topology.yaml file to define connections")
+        
+        return {
+            'type': import_type,
+            'files': file_types,
+            'warnings': warnings,
+            'suggestions': suggestions
+        }
+    
+    def get_import_errors(self, session_id: str) -> List[str]:
+        """Get errors from import process."""
+        session = self._get_session(session_id)
+        
+        # Collect all errors
+        all_errors = []
+        for error_list in session.errors.values():
+            all_errors.extend(error_list)
+        
+        return all_errors

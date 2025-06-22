@@ -10,13 +10,14 @@ import uuid
 from nicegui import ui
 from nicegui.elements.mixins.value_element import ValueElement
 
+from .base import BaseComponent
 from ..interfaces.components import ICytoscapeWidget
 from ..interfaces.state import IAppState
 from ..interfaces.models import INodeModel, IEdgeModel
 from ...logger import get_logger
 
 
-class CytoscapeWidget(ICytoscapeWidget, ValueElement):
+class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     """
     Implementation of ICytoscapeWidget using Cytoscape.js.
     
@@ -29,15 +30,17 @@ class CytoscapeWidget(ICytoscapeWidget, ValueElement):
     - Context menus
     """
     
-    def __init__(self, state: IAppState, **kwargs):
+    def __init__(self, state: IAppState, component_id: Optional[str] = None, **kwargs):
         """
         Initialize the Cytoscape widget.
         
         Args:
             state: Application state
+            component_id: Optional component ID
             **kwargs: Additional widget options
         """
-        super().__init__(tag='div', value=None, **kwargs)
+        BaseComponent.__init__(self, component_id)
+        ValueElement.__init__(self, tag='div', value=None, **kwargs)
         
         self._logger = get_logger()
         self._state = state
@@ -55,6 +58,10 @@ class CytoscapeWidget(ICytoscapeWidget, ValueElement):
         
         # Initialize Cytoscape
         self._initialize_cytoscape()
+    
+    def render(self) -> ui.element:
+        """Render the component (returns self as it's already an element)."""
+        return self
         
     def _initialize_cytoscape(self) -> None:
         """Initialize Cytoscape.js instance."""
@@ -455,3 +462,158 @@ class CytoscapeWidget(ICytoscapeWidget, ValueElement):
         
         for callback in self._callbacks['selection_change']:
             callback(self._selected_elements)
+    
+    # Missing ICytoscapeWidget interface methods
+    
+    def add_node(self, node_id: str, x: float, y: float, 
+                node_type: str = 'client',
+                label: Optional[str] = None,
+                metadata: Optional[Dict[str, Any]] = None) -> None:
+        """Add a node to the graph."""
+        container_id = self._props.get('id', '')
+        node_data = {
+            'id': node_id,
+            'position': {'x': x, 'y': y},
+            'data': {
+                'type': node_type,
+                'label': label or node_id,
+                'metadata': metadata or {}
+            }
+        }
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                window.cy_{container_id}.add({{
+                    data: {json.dumps(node_data['data'])},
+                    position: {json.dumps(node_data['position'])}
+                }});
+            }}
+        ''')
+    
+    def update_node(self, node_id: str, updates: Dict[str, Any]) -> None:
+        """Update node properties."""
+        container_id = self._props.get('id', '')
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                const node = window.cy_{container_id}.getElementById('{node_id}');
+                if (node) {{
+                    node.data({json.dumps(updates)});
+                }}
+            }}
+        ''')
+    
+    def delete_node(self, node_id: str) -> None:
+        """Delete a node from the graph."""
+        container_id = self._props.get('id', '')
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                const node = window.cy_{container_id}.getElementById('{node_id}');
+                if (node) {{
+                    node.remove();
+                }}
+            }}
+        ''')
+    
+    def add_edge(self, edge_id: str, source: str, target: str,
+                edge_type: str = 'peer',
+                allowed_ips: Optional[List[str]] = None) -> None:
+        """Add an edge to the graph."""
+        container_id = self._props.get('id', '')
+        edge_data = {
+            'id': edge_id,
+            'source': source,
+            'target': target,
+            'type': edge_type,
+            'allowed_ips': allowed_ips or []
+        }
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                window.cy_{container_id}.add({{
+                    data: {json.dumps(edge_data)}
+                }});
+            }}
+        ''')
+    
+    def update_edge(self, edge_id: str, updates: Dict[str, Any]) -> None:
+        """Update edge properties."""
+        container_id = self._props.get('id', '')
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                const edge = window.cy_{container_id}.getElementById('{edge_id}');
+                if (edge) {{
+                    edge.data({json.dumps(updates)});
+                }}
+            }}
+        ''')
+    
+    def delete_edge(self, edge_id: str) -> None:
+        """Delete an edge from the graph."""
+        container_id = self._props.get('id', '')
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                const edge = window.cy_{container_id}.getElementById('{edge_id}');
+                if (edge) {{
+                    edge.remove();
+                }}
+            }}
+        ''')
+    
+    def fit_view(self, padding: int = 50) -> None:
+        """Fit the graph view to show all elements."""
+        # This is already implemented as fit_to_viewport
+        self.fit_to_viewport(padding)
+    
+    def get_elements(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Get all graph elements."""
+        # This is already implemented as _get_elements_data
+        return self._get_elements_data()
+    
+    def clear(self) -> None:
+        """Clear all elements from the graph."""
+        container_id = self._props.get('id', '')
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                window.cy_{container_id}.elements().remove();
+            }}
+        ''')
+    
+    def set_style(self, element_id: str, style: Dict[str, Any]) -> None:
+        """Set custom style for an element."""
+        container_id = self._props.get('id', '')
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                const element = window.cy_{container_id}.getElementById('{element_id}');
+                if (element) {{
+                    element.style({json.dumps(style)});
+                }}
+            }}
+        ''')
+    
+    def highlight_elements(self, element_ids: List[str]) -> None:
+        """Highlight specific elements."""
+        container_id = self._props.get('id', '')
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                const elements = window.cy_{container_id}.elements();
+                elements.removeClass('highlighted');
+                const ids = {json.dumps(element_ids)};
+                ids.forEach(id => {{
+                    const element = window.cy_{container_id}.getElementById(id);
+                    if (element) {{
+                        element.addClass('highlighted');
+                    }}
+                }});
+            }}
+        ''')
+    
+    def unhighlight_all(self) -> None:
+        """Remove all highlights."""
+        container_id = self._props.get('id', '')
+        ui.run_javascript(f'''
+            if (window.cy_{container_id}) {{
+                window.cy_{container_id}.elements().removeClass('highlighted');
+            }}
+        ''')
+    
+    def on_node_drag_end(self, handler: Callable[[str, Dict[str, float]], None]) -> None:
+        """Register node drag end handler."""
+        self._callbacks['node_drag'].append(handler)

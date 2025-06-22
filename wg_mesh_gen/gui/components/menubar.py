@@ -439,3 +439,18 @@ class MenuBar(BaseComponent, IMenuBar):
                 handler(file_path)
         else:
             ui.notify(f'Opening: {file_path}', type='info')
+    
+    def add_separator(self, menu_id: str) -> None:
+        """Add a separator to a menu."""
+        # This would add a separator at runtime
+        # Since we're using static menus, this is a no-op for now
+        pass
+    
+    def set_item_enabled(self, menu_id: str, item_id: str, enabled: bool) -> None:
+        """Set whether a menu item is enabled."""
+        # Would need to track menu item element references
+        # and update their disabled state
+        if enabled:
+            self.enable_menu_item(menu_id, item_id)
+        else:
+            self.disable_menu_item(menu_id, item_id)
