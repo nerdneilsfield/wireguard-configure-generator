@@ -1,6 +1,6 @@
 # WireGuard 配置生成器
 
-一个强大而灵活的工具，用于为复杂网络拓扑生成 WireGuard VPN 配置，包括网状网络、星型网络和多中继架构。
+一个强大而灵活的工具，用于为复杂网络拓扑生成 WireGuard VPN 配置，包括网状网络、中心辐射型和多中继架构。
 
 [![Python 版本](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/downloads/)
 [![许可证](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -10,13 +10,15 @@
 
 ## 功能特性
 
-- 🚀 **复杂拓扑支持**：网状网络、星型网络、多中继配置
+- 🚀 **复杂拓扑支持**：网状网络、中心辐射型、多中继配置
 - 🔐 **自动密钥管理**：安全的密钥生成和存储
 - 📊 **网络可视化**：生成网络拓扑图
-- ✅ **配置验证**：JSON Schema 配置验证
-- 🛠️ **灵活模板**：可定制的 Jinja2 模板用于配置生成
-- 🔧 **智能路由**：自动 AllowedIPs 优化以避免冲突
+- ✅ **配置验证**：JSON Schema 验证配置
+- 🛠️ **灵活的模板**：可自定义的 Jinja2 模板用于配置生成
+- 🔧 **智能路由**：自动优化 AllowedIPs 避免冲突
 - 📦 **多种输出格式**：生成配置、脚本和文档
+- 🌐 **组网络配置**：简化的组配置方式定义复杂拓扑
+- 🔍 **网络模拟**：测试连通性和路由路径
 
 ## 架构
 
@@ -26,38 +28,44 @@ graph TB
         A[YAML/JSON 配置]
         B[节点定义]
         C[拓扑定义]
+        D[组配置]
     end
     
     subgraph "处理层"
-        D[配置加载器]
-        E[验证器]
-        F[构建器]
-        G[路由优化器]
+        E[配置加载器]
+        F[验证器]
+        G[构建器]
+        H[路由优化器]
+        I[组网络构建器]
     end
     
     subgraph "存储层"
-        H[密钥存储]
-        I[模板引擎]
+        J[密钥存储]
+        K[模板引擎]
     end
     
     subgraph "输出层"
-        J[WireGuard 配置]
-        K[安装脚本]
-        L[网络可视化]
+        L[WireGuard 配置]
+        M[设置脚本]
+        N[网络可视化]
+        O[模拟结果]
     end
     
-    A --> D
-    B --> D
-    C --> D
-    D --> E
+    A --> E
+    B --> E
+    C --> E
+    D --> I
     E --> F
     F --> G
-    F --> H
-    G --> I
-    H --> I
-    I --> J
-    I --> K
-    F --> L
+    I --> G
+    G --> H
+    G --> J
+    H --> K
+    J --> K
+    K --> L
+    K --> M
+    G --> N
+    G --> O
 ```
 
 ## 安装
@@ -84,7 +92,7 @@ python -m wg_mesh_gen.cli gen \
     --output-dir output/
 ```
 
-### 2. 网络拓扑可视化
+### 2. 可视化网络拓扑
 
 ```bash
 # 创建网络图
@@ -101,6 +109,38 @@ python -m wg_mesh_gen.cli vis \
 python -m wg_mesh_gen.cli valid \
     --nodes-file examples/nodes.yaml \
     --topo-file examples/topology.yaml
+```
+
+### 4. 组网络配置
+
+```bash
+# 使用基于组的拓扑生成配置
+python -m wg_mesh_gen.cli gen \
+    --group-config examples/group_network.yaml \
+    --output-dir output/
+
+# 可视化组网络
+python -m wg_mesh_gen.cli vis \
+    --group-config examples/group_network.yaml \
+    --output group_topology.png
+```
+
+### 5. 网络模拟
+
+```bash
+# 测试网络连通性和路由
+python -m wg_mesh_gen.cli simulate \
+    --group-config examples/group_layered_routing.yaml \
+    --test-connectivity \
+    --test-routes \
+    --duration 10
+
+# 模拟节点故障
+python -m wg_mesh_gen.cli simulate \
+    --nodes-file examples/nodes.yaml \
+    --topo-file examples/topology.yaml \
+    --failure-node relay1 \
+    --duration 30
 ```
 
 ## 配置格式
@@ -178,6 +218,83 @@ peers:
 
 ## 高级用法
 
+### 组网络配置
+
+组网络配置功能通过允许您定义节点组及其关系来简化复杂的拓扑定义。
+
+<details>
+<summary>点击展开组配置示例</summary>
+
+```yaml
+# group_network.yaml
+nodes:
+  office:
+    - name: A
+      wireguard_ip: 10.96.0.2/16
+      endpoints:
+        mesh: 192.168.1.10:51820
+        public: 203.0.113.10:51820
+    - name: B  
+      wireguard_ip: 10.96.0.3/16
+      endpoints:
+        mesh: 192.168.1.11:51820
+    - name: C
+      wireguard_ip: 10.96.0.4/16
+      endpoints:
+        mesh: 192.168.1.12:51820
+
+  campus:
+    - name: D
+      wireguard_ip: 10.96.0.5/16
+      endpoints:
+        public: 202.10.20.5:51820
+    - name: E
+      wireguard_ip: 10.96.0.6/16  
+      endpoints:
+        public: 202.10.20.6:51820
+
+  relay:
+    - name: G
+      wireguard_ip: 10.96.0.254/16
+      role: relay
+      enable_ip_forward: true
+      endpoints:
+        public: 45.33.22.11:51820
+
+groups:
+  - name: office
+    nodes: [A, B, C]
+    topology: mesh
+    mesh_endpoint: mesh  # 内部连接使用 'mesh' 端点
+    
+  - name: campus
+    nodes: [D, E]
+    topology: mesh
+    
+  - name: office_to_relay
+    from: office
+    to: G
+    type: star  # 所有办公室节点连接到 G
+
+  - name: campus_to_relay
+    from: campus
+    to: G
+    type: star
+    
+# 复杂场景的路由配置
+routing:
+  G_allowed_ips:  # G 可以访问的 IP
+    - 10.96.0.0/16
+```
+
+</details>
+
+**支持的拓扑类型：**
+- `mesh`：组内所有节点之间的全网状连接
+- `star`：所有节点连接到中心节点
+- `chain`：顺序连接（A→B→C）
+- `single`：单节点连接
+
 ### 密钥管理
 
 ```bash
@@ -250,6 +367,42 @@ peers:
 
 </details>
 
+### 跨境网络的分层路由
+
+<details>
+<summary>点击展开分层路由示例</summary>
+
+```yaml
+# 示例：中国的办公室节点只能连接到中继 G（不能直接连接海外）
+# 通过使用中继节点处理 GFW 限制
+
+groups:
+  - name: china_to_relay
+    from: office  # 中国的节点
+    to: G         # 从中国可访问的中继
+    type: star
+    
+  - name: relay_to_overseas  
+    from: G       # 中继节点
+    to: [H, I]    # 海外节点
+    type: star
+
+routing:
+  # G 可以在中国和海外之间转发流量
+  G_allowed_ips:
+    - 10.96.0.0/24    # 中国子网
+    - 10.96.1.0/24    # 海外子网
+    
+  # 办公室节点通过 G 路由海外流量
+  office_allowed_ips:
+    - 10.96.0.254/32  # G 的 IP
+    - 10.96.1.0/24    # 海外子网（通过 G）
+```
+
+系统自动为中继节点生成 PostUp/PostDown 脚本以启用 IP 转发。
+
+</details>
+
 ### 网络可视化选项
 
 ```bash
@@ -259,6 +412,12 @@ python -m wg_mesh_gen.cli vis \
     --topo-file topology.yaml \
     --layout hierarchical \
     --output network.png
+
+# 可视化组配置
+python -m wg_mesh_gen.cli vis \
+    --group-config group_network.yaml \
+    --layout hierarchical \
+    --output group_topology.png
 
 # 可用布局：auto、spring、circular、shell、hierarchical、kamada_kawai
 ```
@@ -327,7 +486,10 @@ wg_mesh_gen/
 ├── visualizer.py       # 网络可视化
 ├── crypto.py           # 加密操作
 ├── simple_storage.py   # 密钥存储实现
-└── schemas/            # 用于验证的 JSON 模式
+├── group_network_builder.py  # 组网络构建器
+├── simulator.py        # 网络模拟
+├── wg_mock.py          # WireGuard 模拟框架
+└── schemas/            # 用于验证的 JSON schemas
 ```
 
 ### 贡献
@@ -376,54 +538,6 @@ make lint
 
 </details>
 
-## 常见拓扑模式
-
-### 1. 全网状网络
-
-```mermaid
-graph TD
-    A[节点 A] <--> B[节点 B]
-    A <--> C[节点 C]
-    B <--> C
-    A <--> D[节点 D]
-    B <--> D
-    C <--> D
-```
-
-### 2. 星型网络（Hub-and-Spoke）
-
-```mermaid
-graph TD
-    H[中心节点]
-    A[分支 A] --> H
-    B[分支 B] --> H
-    C[分支 C] --> H
-    D[分支 D] --> H
-```
-
-### 3. 多中继网络
-
-```mermaid
-graph TD
-    subgraph "站点 1"
-        A1[节点 A]
-        B1[节点 B]
-    end
-    
-    subgraph "站点 2"
-        C1[节点 C]
-        D1[节点 D]
-    end
-    
-    R1[中继 1]
-    R2[中继 2]
-    
-    A1 --> R1
-    B1 --> R1
-    C1 --> R2
-    D1 --> R2
-    R1 <--> R2
-```
 
 ## 许可证
 

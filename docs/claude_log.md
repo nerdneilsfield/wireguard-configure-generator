@@ -535,3 +535,61 @@ def _build_peer_map(peers: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any
 ```
 
 This ensures that AllowedIPs are correctly configured for each direction of communication.
+
+---
+
+## 2025-06-22 - Group Config Support and Network Simulation
+
+### Summary
+
+Enhanced the CLI with group configuration support for visualization and created a comprehensive network simulation command. Refactored simulation logic into a separate module to resolve CLI parsing issues.
+
+### Changes Made
+
+1. **Added Group Config Support to vis Command**
+   - The `vis` command now accepts `--group-config` option
+   - Automatically converts group configurations to traditional format
+   - Uses temporary files that are properly cleaned up
+   - Example: `python -m wg_mesh_gen.cli vis --group-config examples/group_simple.yaml --output topology.png`
+
+2. **Created Network Simulation Command**
+   - New `simulate` command for testing network behavior
+   - Features:
+     - Connectivity testing between all node pairs
+     - Routing path analysis through relay nodes
+     - Node failure and recovery simulation
+     - Support for both traditional and group configurations
+   - Example: `python -m wg_mesh_gen.cli simulate --group-config examples/group_layered_routing.yaml --test-connectivity --test-routes`
+
+3. **Refactored Simulation Logic**
+   - Created `simulator.py` module with `NetworkSimulator` class
+   - Clean separation between CLI and business logic
+   - Resolved issues with node names being interpreted as CLI arguments
+   - Added comprehensive test suite (`test_simulator.py`)
+
+4. **Fixed Schema Validation**
+   - Updated `group_network_schema.json` to make `allowed_ips` optional when pattern properties are used
+   - Supports flexible routing configurations like `G_allowed_ips` and `H_allowed_ips`
+
+### Technical Details
+
+The simulator module provides both async and sync interfaces:
+```python
+# Async usage
+simulator = NetworkSimulator()
+results = await simulator.simulate_network(...)
+
+# Sync wrapper
+results = run_simulation(...)
+```
+
+Simulation results include:
+- Initial and final network status
+- Connectivity test results with paths and latencies
+- Routing analysis through relay nodes
+- Failure simulation results with impact analysis
+
+### Testing
+- Added 7 comprehensive tests for the simulator
+- All tests passing
+- Covers basic simulation, connectivity, routing, failure scenarios

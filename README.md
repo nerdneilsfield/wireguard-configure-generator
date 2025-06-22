@@ -101,6 +101,38 @@ python -m wg_mesh_gen.cli valid \
     --topo-file examples/topology.yaml
 ```
 
+### 4. Group Network Configuration
+
+```bash
+# Generate configurations using group-based topology
+python -m wg_mesh_gen.cli gen \
+    --group-config examples/group_network.yaml \
+    --output-dir output/
+
+# Visualize group network
+python -m wg_mesh_gen.cli vis \
+    --group-config examples/group_network.yaml \
+    --output group_topology.png
+```
+
+### 5. Network Simulation
+
+```bash
+# Test network connectivity and routing
+python -m wg_mesh_gen.cli simulate \
+    --group-config examples/group_layered_routing.yaml \
+    --test-connectivity \
+    --test-routes \
+    --duration 10
+
+# Simulate node failure
+python -m wg_mesh_gen.cli simulate \
+    --nodes-file examples/nodes.yaml \
+    --topo-file examples/topology.yaml \
+    --failure-node relay1 \
+    --duration 30
+```
+
 ## Configuration Format
 
 ### Node Configuration
@@ -176,6 +208,83 @@ peers:
 
 ## Advanced Usage
 
+### Group Network Configuration
+
+The group network configuration feature simplifies complex topology definitions by allowing you to define groups of nodes and their relationships.
+
+<details>
+<summary>Click to expand group configuration example</summary>
+
+```yaml
+# group_network.yaml
+nodes:
+  office:
+    - name: A
+      wireguard_ip: 10.96.0.2/16
+      endpoints:
+        mesh: 192.168.1.10:51820
+        public: 203.0.113.10:51820
+    - name: B  
+      wireguard_ip: 10.96.0.3/16
+      endpoints:
+        mesh: 192.168.1.11:51820
+    - name: C
+      wireguard_ip: 10.96.0.4/16
+      endpoints:
+        mesh: 192.168.1.12:51820
+
+  campus:
+    - name: D
+      wireguard_ip: 10.96.0.5/16
+      endpoints:
+        public: 202.10.20.5:51820
+    - name: E
+      wireguard_ip: 10.96.0.6/16  
+      endpoints:
+        public: 202.10.20.6:51820
+
+  relay:
+    - name: G
+      wireguard_ip: 10.96.0.254/16
+      role: relay
+      enable_ip_forward: true
+      endpoints:
+        public: 45.33.22.11:51820
+
+groups:
+  - name: office
+    nodes: [A, B, C]
+    topology: mesh
+    mesh_endpoint: mesh  # Use 'mesh' endpoint for internal connections
+    
+  - name: campus
+    nodes: [D, E]
+    topology: mesh
+    
+  - name: office_to_relay
+    from: office
+    to: G
+    type: star  # All office nodes connect to G
+
+  - name: campus_to_relay
+    from: campus
+    to: G
+    type: star
+    
+# Routing configuration for complex scenarios
+routing:
+  G_allowed_ips:  # IPs that G can reach
+    - 10.96.0.0/16
+```
+
+</details>
+
+**Supported Topologies:**
+- `mesh`: Full mesh connectivity between all nodes in the group
+- `star`: All nodes connect to a central node
+- `chain`: Sequential connections (A→B→C)
+- `single`: Single node connections
+
 ### Key Management
 
 ```bash
@@ -248,6 +357,42 @@ peers:
 
 </details>
 
+### Layered Routing for Cross-Border Networks
+
+<details>
+<summary>Click to expand layered routing example</summary>
+
+```yaml
+# Example: Office nodes in China can only connect to relay G (not overseas)
+# This handles GFW restrictions by using relay nodes
+
+groups:
+  - name: china_to_relay
+    from: office  # Nodes in China
+    to: G         # Relay accessible from China
+    type: star
+    
+  - name: relay_to_overseas  
+    from: G       # Relay node
+    to: [H, I]    # Overseas nodes
+    type: star
+
+routing:
+  # G can forward traffic between China and overseas
+  G_allowed_ips:
+    - 10.96.0.0/24    # China subnet
+    - 10.96.1.0/24    # Overseas subnet
+    
+  # Office nodes route overseas traffic through G
+  office_allowed_ips:
+    - 10.96.0.254/32  # G's IP
+    - 10.96.1.0/24    # Overseas subnet (via G)
+```
+
+The system automatically generates PostUp/PostDown scripts for relay nodes to enable IP forwarding.
+
+</details>
+
 ### Network Visualization Options
 
 ```bash
@@ -257,6 +402,12 @@ python -m wg_mesh_gen.cli vis \
     --topo-file topology.yaml \
     --layout hierarchical \
     --output network.png
+
+# Visualize group configurations
+python -m wg_mesh_gen.cli vis \
+    --group-config group_network.yaml \
+    --layout hierarchical \
+    --output group_topology.png
 
 # Available layouts: auto, spring, circular, shell, hierarchical, kamada_kawai
 ```

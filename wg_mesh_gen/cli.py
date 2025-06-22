@@ -4,8 +4,12 @@ Command Line Interface for WireGuard Mesh Generator
 
 import click
 import os
+import sys
 from pathlib import Path
 from .logger import setup_logging, get_logger
+
+# Debug: Uncomment to see what's happening
+# print(f"DEBUG: cli.py loaded with sys.argv = {sys.argv}", file=sys.stderr)
 from .loader import load_nodes, load_topology, validate_configuration
 from .builder import build_peer_configs
 from .render import ConfigRenderer
@@ -147,14 +151,18 @@ def gen(ctx, auto_keys, db_path, verbose, log_file, nodes_file, topo_file, outpu
 @click.option('--nodes-file', '-n', help='节点配置文件路径')
 @click.option('--topo-file', '-t', help='拓扑配置文件路径')
 @click.option('--output-dir', '-o', help='输出目录')
+@click.option('--group-config', '-g', help='组网络配置文件路径')
 @click.pass_context
-def vis(ctx, layout, output, show_edge_labels, high_dpi, verbose, log_file, nodes_file, topo_file, output_dir):
+def vis(ctx, layout, output, show_edge_labels, high_dpi, verbose, log_file, nodes_file, topo_file, output_dir, group_config):
     """生成网络拓扑可视化图"""
     # 使用子命令参数或回退到主命令参数
     verbose = verbose or ctx.obj.get('verbose', False)
-    nodes_file = nodes_file or ctx.obj['nodes_file']
-    topo_file = topo_file or ctx.obj['topo_file']
     output_dir = output_dir or ctx.obj['output_dir']
+    
+    # Only get nodes_file/topo_file from context if not using group_config
+    if not group_config:
+        nodes_file = nodes_file or ctx.obj.get('nodes_file')
+        topo_file = topo_file or ctx.obj.get('topo_file')
 
     # 设置日志
     if verbose or log_file:
@@ -172,14 +180,43 @@ def vis(ctx, layout, output, show_edge_labels, high_dpi, verbose, log_file, node
     logger.info(f"布局算法: {layout}")
 
     try:
-        # Check if input files exist
-        if not os.path.exists(nodes_file):
-            logger.error(f"节点配置文件不存在: {nodes_file}")
-            raise click.ClickException(f"Nodes file not found: {nodes_file}")
+        # Check if using group configuration
+        if group_config:
+            logger.info("使用组网络配置模式")
+            
+            if not os.path.exists(group_config):
+                logger.error(f"组配置文件不存在: {group_config}")
+                raise click.ClickException(f"Group config file not found: {group_config}")
+            
+            # Convert group config to nodes and topology
+            from .group_network_builder import GroupNetworkBuilder
+            import tempfile
+            import json
+            
+            builder = GroupNetworkBuilder(group_config)
+            nodes, peers = builder.build()
+            
+            # Create temporary files for visualization
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as nodes_tmp:
+                json.dump({'nodes': nodes}, nodes_tmp)
+                temp_nodes_file = nodes_tmp.name
+            
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as topo_tmp:
+                json.dump({'peers': peers}, topo_tmp)
+                temp_topo_file = topo_tmp.name
+            
+            # Use temporary files for visualization
+            nodes_file = temp_nodes_file
+            topo_file = temp_topo_file
+        else:
+            # Traditional mode - check if input files exist
+            if not os.path.exists(nodes_file):
+                logger.error(f"节点配置文件不存在: {nodes_file}")
+                raise click.ClickException(f"Nodes file not found: {nodes_file}")
 
-        if not os.path.exists(topo_file):
-            logger.error(f"拓扑配置文件不存在: {topo_file}")
-            raise click.ClickException(f"Topology file not found: {topo_file}")
+            if not os.path.exists(topo_file):
+                logger.error(f"拓扑配置文件不存在: {topo_file}")
+                raise click.ClickException(f"Topology file not found: {topo_file}")
 
         # Generate visualization
         from .visualizer import visualize as viz_func
@@ -194,9 +231,76 @@ def vis(ctx, layout, output, show_edge_labels, high_dpi, verbose, log_file, node
 
         logger.info("网络拓扑可视化生成完成")
         click.echo(f"拓扑图已保存到: {output_path}")
+        
+        # Clean up temporary files if using group config
+        if group_config:
+            try:
+                os.unlink(temp_nodes_file)
+                os.unlink(temp_topo_file)
+            except Exception:
+                pass
 
     except Exception as e:
         logger.error(f"生成可视化失败: {e}")
+        # Clean up temporary files on error
+        if group_config and 'temp_nodes_file' in locals():
+            try:
+                os.unlink(temp_nodes_file)
+                os.unlink(temp_topo_file)
+            except Exception:
+                pass
+        raise click.ClickException(str(e))
+
+
+@cli.command()
+@click.option('--nodes-file', '-n', help='节点配置文件路径')
+@click.option('--topo-file', '-t', help='拓扑配置文件路径')
+@click.option('--group-config', '-g', help='组网络配置文件路径')
+@click.option('--test-routes', is_flag=True, help='测试所有路由路径')
+@click.option('--test-connectivity', is_flag=True, help='测试节点连通性')
+@click.option('--duration', '-d', default=10, help='模拟持续时间（秒）')
+@click.option('--failure-node', help='模拟指定节点故障')
+@click.option('--verbose', '-v', is_flag=True, help='启用详细输出')
+@click.pass_context
+def simulate(ctx, nodes_file, topo_file, group_config, test_routes, test_connectivity, duration, failure_node, verbose):
+    """模拟网络连接和路由情况"""
+    from .simulator import run_simulation
+    
+    # 设置日志
+    verbose = verbose or ctx.obj.get('verbose', False)
+    if verbose:
+        setup_logging(verbose=True)
+    
+    logger = get_logger()
+    
+    # Get nodes/topo files from context if not provided
+    if not group_config:
+        nodes_file = nodes_file or ctx.obj.get('nodes_file')
+        topo_file = topo_file or ctx.obj.get('topo_file')
+    
+    try:
+        # Run the simulation
+        results = run_simulation(
+            nodes_file=nodes_file,
+            topo_file=topo_file,
+            group_config=group_config,
+            test_routes=test_routes,
+            test_connectivity=test_connectivity,
+            duration=duration,
+            failure_node=failure_node
+        )
+        
+        # Results are already logged by the simulator
+        # Just return success
+        
+    except FileNotFoundError as e:
+        logger.error(f"文件未找到: {e}")
+        raise click.ClickException(str(e))
+    except ValueError as e:
+        logger.error(f"参数错误: {e}")
+        raise click.ClickException(str(e))
+    except Exception as e:
+        logger.error(f"模拟失败: {e}")
         raise click.ClickException(str(e))
 
 

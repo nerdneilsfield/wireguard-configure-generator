@@ -148,7 +148,6 @@
               },
               "routing": {
                 "type": "object",
-                "required": ["allowed_ips"],
                 "properties": {
                   "allowed_ips": {
                     "type": "array",
@@ -165,7 +164,8 @@
                       "type": "string"
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "special_flags": {
                 "type": "object",
