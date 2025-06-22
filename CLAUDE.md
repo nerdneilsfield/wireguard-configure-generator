@@ -92,3 +92,19 @@ python -m wg_mesh_gen.cli keys list
 - After completing each modification, record changes in `docs/claude_log.md` with current timestamp
 - Commit and push changes using English commit messages
 - Follow conventional commit format (e.g., "fix:", "feat:", "refactor:", "docs:")
+
+## Development Conventions
+
+- **Script Organization**:
+  - 脚本都放到 scripts 下面去 (All scripts should be placed in the scripts directory)
+
+## Repository Guidelines
+
+- **File Organization**:
+  - 不要在根目录放任何测试文件 (Do not place any test files in the root directory)
+
+## Commit and Logging Guidelines
+
+- **Logging Workflow**:
+  - Complete all operations for a phase and record them with a timestamp in `docs/claude_logs.md`
+  - Commit changes with English commit messages
