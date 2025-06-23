@@ -42,6 +42,9 @@ class WireGuardEditorApp:
         self.sessions_dir = config_dir / 'sessions'
         self.sessions_dir.mkdir(exist_ok=True)
         
+        # Initialize logger
+        self._logger = logger
+        
         # Core managers (shared across sessions)
         self.file_manager = FileManager(str(config_dir / 'uploads'))
         self.validation_manager = ValidationManager()
