@@ -145,7 +145,7 @@ class NodeTree(BaseComponent, INodeTree):
                     ui.label(node.wireguard_ip).classes('text-caption text-gray-600')
             
             # Status indicator
-            if node.endpoint:
+            if node.endpoints:
                 ui.icon('cloud').classes('text-green-500 text-sm').tooltip('Has endpoint')
             
             # Click handler

@@ -390,7 +390,8 @@ class WireGuardEditorApp:
         """Auto-save session if modified."""
         if session.get('modified', False):
             await self._save_session_state(session)
-            ui.notify('Auto-saved', type='positive', timeout=1000)
+            # Note: Cannot use ui.notify in background tasks due to slot context
+            self._logger.info(f"Auto-saved session {session.get('id', 'unknown')}")
     
     def _setup_menu_handlers(self, menubar: MenuBar, session: Dict[str, Any]) -> None:
         """Setup menu bar handlers."""
@@ -448,19 +449,27 @@ class WireGuardEditorApp:
         """Subscribe to application state changes."""
         app_state = session['app_state']
         
-        # Mark session as modified on changes
-        def mark_modified(event):
+        # Mark session as modified and refresh UI on changes
+        def mark_modified_and_refresh(event):
             session['modified'] = True
+            # Refresh graph visualization
+            cytoscape = self.ui_components.get('cytoscape')
+            if cytoscape:
+                cytoscape.refresh()
+            # Refresh node tree
+            node_tree = self.ui_components.get('node_tree')
+            if node_tree:
+                node_tree.refresh()
         
-        app_state.subscribe('node_added', mark_modified)
-        app_state.subscribe('node_removed', mark_modified)
-        app_state.subscribe('node_updated', mark_modified)
-        app_state.subscribe('edge_added', mark_modified)
-        app_state.subscribe('edge_removed', mark_modified)
-        app_state.subscribe('edge_updated', mark_modified)
-        app_state.subscribe('group_added', mark_modified)
-        app_state.subscribe('group_removed', mark_modified)
-        app_state.subscribe('group_updated', mark_modified)
+        app_state.subscribe('node_added', mark_modified_and_refresh)
+        app_state.subscribe('node_removed', mark_modified_and_refresh)
+        app_state.subscribe('node_updated', mark_modified_and_refresh)
+        app_state.subscribe('edge_added', mark_modified_and_refresh)
+        app_state.subscribe('edge_removed', mark_modified_and_refresh)
+        app_state.subscribe('edge_updated', mark_modified_and_refresh)
+        app_state.subscribe('group_added', mark_modified_and_refresh)
+        app_state.subscribe('group_removed', mark_modified_and_refresh)
+        app_state.subscribe('group_updated', mark_modified_and_refresh)
     
     # Event handlers
     def _on_node_select(self, session: Dict[str, Any], node_id: str) -> None:

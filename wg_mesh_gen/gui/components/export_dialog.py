@@ -220,9 +220,9 @@ class ExportDialog(BaseComponent, IExportDialog):
                 ui.label('Package Export Options').classes('text-subtitle2')
                 
                 self._pkg_format = ui.select(
-                    'Archive format',
                     options=['zip', 'tar.gz'],
-                    value=self._export_options.get('archive_format', 'zip')
+                    value=self._export_options.get('archive_format', 'zip'),
+                    label='Archive format'
                 ).classes('w-48')
                 
                 self._pkg_readme = ui.switch(

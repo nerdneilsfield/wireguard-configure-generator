@@ -130,9 +130,11 @@ class PropertyPanel(BaseComponent, IPropertyPanel):
             # Endpoint input (only for relay nodes)
             endpoint_container = ui.column().classes('w-full')
             with endpoint_container:
+                # Get first endpoint for backward compatibility
+                first_endpoint = list(node.endpoints.values())[0] if node.endpoints else ''
                 self._inputs['endpoint'] = ui.input(
                     'Endpoint',
-                    value=node.endpoint or '',
+                    value=first_endpoint,
                     placeholder='example.com:51820'
                 ).classes('w-full')\
                  .on('blur', lambda: self._validate_field('endpoint'))
