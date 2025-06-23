@@ -56,6 +56,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
             'node_drag': [],
             'selection_change': []
         }
+        self._on_background_click: Optional[Callable[[], None]] = None
         
         # Default styles
         self._styles = self._get_default_styles()
@@ -290,6 +291,10 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
         nodes = []
         edges = []
         
+        # Check if state is initialized
+        if not hasattr(self, '_state') or self._state is None:
+            return {'nodes': [], 'edges': []}
+        
         # Convert nodes
         for node in self._state.nodes.values():
             nodes.append({
@@ -317,7 +322,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def refresh(self) -> None:
         """Refresh the visualization with current state data."""
-        container_id = self._props['id']
+        container_id = self._container_id
         elements = self._get_elements_data()
         
         ui.run_javascript(f'''
@@ -335,7 +340,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def apply_layout(self, layout_name: str, options: Optional[Dict[str, Any]] = None) -> None:
         """Apply a layout algorithm to arrange nodes."""
-        container_id = self._props['id']
+        container_id = self._container_id
         layout_options = options or {}
         layout_options['name'] = layout_name
         
@@ -348,7 +353,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def center_on_elements(self, element_ids: Optional[List[str]] = None) -> None:
         """Center the view on specific elements or all elements."""
-        container_id = self._props['id']
+        container_id = self._container_id
         
         if element_ids:
             selector = ','.join(f'#{id}' for id in element_ids)
@@ -372,7 +377,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def select_elements(self, element_ids: List[str]) -> None:
         """Select specific elements."""
-        container_id = self._props['id']
+        container_id = self._container_id
         selector = ','.join(f'#{id}' for id in element_ids)
         
         ui.run_javascript(f'''
@@ -385,7 +390,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def clear_selection(self) -> None:
         """Clear all selections."""
-        container_id = self._props['id']
+        container_id = self._container_id
         
         ui.run_javascript(f'''
             const cy = window.cy_{container_id};
@@ -396,7 +401,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def set_zoom(self, zoom_level: float) -> None:
         """Set the zoom level."""
-        container_id = self._props['id']
+        container_id = self._container_id
         
         ui.run_javascript(f'''
             const cy = window.cy_{container_id};
@@ -407,7 +412,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def fit_to_viewport(self, padding: int = 50) -> None:
         """Fit all elements to viewport."""
-        container_id = self._props['id']
+        container_id = self._container_id
         
         ui.run_javascript(f'''
             const cy = window.cy_{container_id};
@@ -418,7 +423,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def highlight_path(self, node_ids: List[str]) -> None:
         """Highlight a path through the network."""
-        container_id = self._props['id']
+        container_id = self._container_id
         
         # Build edge selectors for path
         edge_selectors = []
@@ -447,7 +452,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def export_image(self, format: str = 'png') -> str:
         """Export the current view as an image."""
-        container_id = self._props['id']
+        container_id = self._container_id
         
         # This returns a promise, so we'd need to handle it asynchronously
         # For now, return a placeholder
@@ -456,7 +461,7 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def update_styles(self, styles: List[Dict[str, Any]]) -> None:
         """Update the visualization styles."""
-        container_id = self._props['id']
+        container_id = self._container_id
         self._styles = styles
         
         ui.run_javascript(f'''
@@ -486,6 +491,9 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def _handle_node_click(self, event: Dict[str, Any]) -> None:
         """Handle node click events."""
+        if not hasattr(event, 'msg') or 'id' not in event.msg:
+            return
+        
         node_id = event.msg['id']
         node = self._state.nodes.get(node_id)
         
@@ -495,6 +503,9 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def _handle_edge_click(self, event: Dict[str, Any]) -> None:
         """Handle edge click events."""
+        if not hasattr(event, 'msg') or 'id' not in event.msg:
+            return
+        
         edge_id = event.msg['id']
         edge = self._state.edges.get(edge_id)
         
@@ -513,6 +524,9 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def _handle_node_drag(self, event: Dict[str, Any]) -> None:
         """Handle node drag events."""
+        if not hasattr(event, 'msg') or 'id' not in event.msg or 'position' not in event.msg:
+            return
+        
         node_id = event.msg['id']
         position = event.msg['position']
         
@@ -526,6 +540,9 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def _handle_selection_change(self, event: Dict[str, Any]) -> None:
         """Handle selection change events."""
+        if not hasattr(event, 'msg') or 'selected' not in event.msg:
+            return
+        
         self._selected_elements = event.msg['selected']
         
         for callback in self._callbacks['selection_change']:
@@ -688,4 +705,14 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
     
     def on_node_drag_end(self, handler: Callable[[str, Dict[str, float]], None]) -> None:
         """Register node drag end handler."""
+        self._callbacks['node_drag'].append(handler)
+    
+    def on_background_click(self, handler: Callable[[], None]) -> None:
+        """Register background click handler."""
+        # Store the handler and register with canvas click
+        self._on_background_click = handler
+        self.on_canvas_click(lambda pos: handler())
+    
+    def on_node_drag(self, handler: Callable[[str, Dict[str, float]], None]) -> None:
+        """Register node drag handler."""
         self._callbacks['node_drag'].append(handler)

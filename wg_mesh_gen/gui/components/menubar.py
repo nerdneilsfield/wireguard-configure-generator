@@ -459,3 +459,47 @@ class MenuBar(BaseComponent, IMenuBar):
             self.enable_menu_item(menu_id, item_id)
         else:
             self.disable_menu_item(menu_id, item_id)
+    
+    # IComponent interface methods
+    @property
+    def id(self) -> str:
+        """Component ID."""
+        return getattr(self, 'component_id', 'menubar')
+    
+    @id.setter
+    def id(self, value: str) -> None:
+        """Set component ID."""
+        self.component_id = value
+    
+    @property
+    def visible(self) -> bool:
+        """Whether the component is visible."""
+        return getattr(self, '_visible', True)
+    
+    @visible.setter
+    def visible(self, value: bool) -> None:
+        """Set component visibility."""
+        self._visible = value
+        # MenuBar visibility would require UI manipulation
+    
+    @property
+    def enabled(self) -> bool:
+        """Whether the component is enabled."""
+        return getattr(self, '_enabled', True)
+    
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        """Set component enabled state."""
+        self._enabled = value
+        # MenuBar enabled state would require UI manipulation
+    
+    def update(self) -> None:
+        """Update the component."""
+        # Refresh menu state if needed
+        pass
+    
+    def destroy(self) -> None:
+        """Destroy the component."""
+        # Clean up menu resources
+        self._menus.clear()
+        self._items.clear()

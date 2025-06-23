@@ -479,3 +479,47 @@ class ToolBar(BaseComponent, IToolBar):
             self.enable_action(button_id)
         else:
             self.disable_action(button_id)
+    
+    # IComponent interface methods
+    @property
+    def id(self) -> str:
+        """Component ID."""
+        return getattr(self, 'component_id', 'toolbar')
+    
+    @id.setter
+    def id(self, value: str) -> None:
+        """Set component ID."""
+        self.component_id = value
+    
+    @property
+    def visible(self) -> bool:
+        """Whether the component is visible."""
+        return getattr(self, '_visible', True)
+    
+    @visible.setter
+    def visible(self, value: bool) -> None:
+        """Set component visibility."""
+        self._visible = value
+        # ToolBar visibility would require UI manipulation
+    
+    @property
+    def enabled(self) -> bool:
+        """Whether the component is enabled."""
+        return getattr(self, '_enabled', True)
+    
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        """Set component enabled state."""
+        self._enabled = value
+        # ToolBar enabled state would require UI manipulation
+    
+    def update(self) -> None:
+        """Update the component."""
+        self._update_button_states()
+    
+    def destroy(self) -> None:
+        """Destroy the component."""
+        # Clean up toolbar resources
+        self._actions.clear()
+        if hasattr(self, '_buttons'):
+            self._buttons.clear()

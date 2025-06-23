@@ -290,17 +290,21 @@ class ImportWizard(IImportWizard):
         session.import_options[option] = value
         self._logger.info(f"Set import option {option} = {value} for session {session_id}")
     
-    def execute_import(self, session_id: str, app_state: IAppState) -> bool:
+    def execute_import(self, session_id: str, options: Dict[str, Any]) -> bool:
         """
-        Execute the import operation.
+        Execute the import with given options.
         
         Args:
             session_id: Import session ID
-            app_state: Application state to import into
+            options: Import options (merge/replace, key handling, etc.)
             
         Returns:
-            True if successful
+            True if import successful
         """
+        # Extract app_state from options
+        app_state = options.get('app_state')
+        if not app_state:
+            raise ValueError("app_state must be provided in options")
         session = self._get_session(session_id)
         
         # Check for errors

@@ -116,16 +116,22 @@ class ExportDialog(BaseComponent, IExportDialog):
         
         return self._dialog
     
-    def show(self) -> None:
+    def show(self, options: Dict[str, Any] = None) -> None:
         """Show the export dialog."""
+        if options:
+            self.set_options(options)
         if self._dialog:
             self._dialog.open()
             self._update_preview()
     
-    def close(self) -> None:
-        """Close the export dialog."""
+    def hide(self) -> None:
+        """Hide the export dialog."""
         if self._dialog:
             self._dialog.close()
+    
+    def close(self) -> None:
+        """Close the export dialog."""
+        self.hide()
         
         if self._on_cancel:
             self._on_cancel()
@@ -422,3 +428,71 @@ class ExportDialog(BaseComponent, IExportDialog):
     def _can_export(self) -> bool:
         """Check if export is possible."""
         return bool(self._app_state.nodes)
+    
+    # Missing IComponent interface methods
+    
+    @property
+    def id(self) -> str:
+        """Component ID."""
+        return getattr(self, 'component_id', 'export_dialog')
+    
+    @id.setter
+    def id(self, value: str) -> None:
+        """Set component ID."""
+        self.component_id = value
+    
+    @property
+    def visible(self) -> bool:
+        """Whether the component is visible."""
+        return getattr(self, '_visible', True)
+    
+    @visible.setter
+    def visible(self, value: bool) -> None:
+        """Set component visibility."""
+        self._visible = value
+        if self._dialog:
+            if value:
+                self._dialog.open()
+            else:
+                self._dialog.close()
+    
+    @property
+    def enabled(self) -> bool:
+        """Whether the component is enabled."""
+        return getattr(self, '_enabled', True)
+    
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        """Set component enabled state."""
+        self._enabled = value
+    
+    def update(self) -> None:
+        """Update the component."""
+        if hasattr(self, '_update_preview'):
+            self._update_preview()
+    
+    def destroy(self) -> None:
+        """Destroy the component."""
+        if self._dialog:
+            self._dialog.close()
+            if hasattr(self._dialog, 'delete'):
+                self._dialog.delete()
+    
+    # Missing IExportDialog interface methods
+    
+    def get_selected_options(self) -> Dict[str, bool]:
+        """Get user-selected export options."""
+        options = self.get_options()
+        return {
+            'include_config': True,
+            'include_wireguard': options.get('format') == 'wireguard',
+            'include_keys': options.get('include_keys', True),
+            'include_scripts': options.get('include_scripts', False),
+            'split_files': options.get('split_files', False)
+        }
+    
+    def set_preview(self, preview: Dict[str, Any]) -> None:
+        """Set export preview information."""
+        self._preview_data = preview
+        if hasattr(self, '_update_preview'):
+            self._update_preview()

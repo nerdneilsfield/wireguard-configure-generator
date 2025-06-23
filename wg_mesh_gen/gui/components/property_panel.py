@@ -580,3 +580,59 @@ class PropertyPanel(BaseComponent, IPropertyPanel):
             # Rebuild the UI
             if self._target_id and self._target_type == 'edge':
                 self.load_properties(self._target_id)
+    
+    # Missing IPropertyPanel interface methods
+    
+    def validate(self) -> List[str]:
+        """Validate current property values."""
+        errors = []
+        
+        if self._target_type == 'node':
+            # Validate node properties
+            if 'name' in self._inputs and not self._inputs['name'].value.strip():
+                errors.append("Node name is required")
+            
+            if 'wireguard_ip' in self._inputs and self._inputs['wireguard_ip'].value:
+                try:
+                    ipaddress.ip_interface(self._inputs['wireguard_ip'].value)
+                except ValueError:
+                    errors.append("Invalid WireGuard IP format")
+        
+        elif self._target_type == 'edge':
+            # Validate edge properties
+            if 'allowed_ips' in self._inputs:
+                for i, ip_input in enumerate(self._inputs['allowed_ips']):
+                    if ip_input.value.strip():
+                        try:
+                            ipaddress.ip_network(ip_input.value, strict=False)
+                        except ValueError:
+                            errors.append(f"Invalid allowed IP format at position {i+1}")
+        
+        elif self._target_type == 'group':
+            # Validate group properties
+            if 'name' in self._inputs and not self._inputs['name'].value.strip():
+                errors.append("Group name is required")
+        
+        return errors
+    
+    def reset(self) -> None:
+        """Reset the panel to empty state."""
+        self._target_id = None
+        self._target_type = None
+        self._inputs.clear()
+        self._errors.clear()
+        
+        # Clear the UI
+        if hasattr(self, '_element') and self._element:
+            self._element.clear()
+    
+    def on_property_change(self, handler: Callable[[str, str, Any], None]) -> None:
+        """Register property change handler."""
+        # Store the handler for property change events
+        self._on_property_change = handler
+        
+        # Set up property change listeners for existing inputs
+        for prop_name, input_element in self._inputs.items():
+            if hasattr(input_element, 'on'):
+                input_element.on('update:model-value', 
+                    lambda value, prop=prop_name: handler(self._target_id or '', prop, value))

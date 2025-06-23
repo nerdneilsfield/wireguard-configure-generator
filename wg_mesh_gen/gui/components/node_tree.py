@@ -333,3 +333,46 @@ class NodeTree(BaseComponent, INodeTree):
         def wrapped_handler(node_id: str) -> None:
             handler([node_id] if node_id else [])
         self.on_node_select(wrapped_handler)
+    
+    # IComponent interface methods
+    @property
+    def id(self) -> str:
+        """Component ID."""
+        return getattr(self, 'component_id', 'node_tree')
+    
+    @id.setter
+    def id(self, value: str) -> None:
+        """Set component ID."""
+        self.component_id = value
+    
+    @property
+    def visible(self) -> bool:
+        """Whether the component is visible."""
+        return getattr(self, '_visible', True)
+    
+    @visible.setter
+    def visible(self, value: bool) -> None:
+        """Set component visibility."""
+        self._visible = value
+        # NodeTree visibility would require UI manipulation
+    
+    @property
+    def enabled(self) -> bool:
+        """Whether the component is enabled."""
+        return getattr(self, '_enabled', True)
+    
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        """Set component enabled state."""
+        self._enabled = value
+        # NodeTree enabled state would require UI manipulation
+    
+    def update(self) -> None:
+        """Update the component."""
+        self._build_tree()
+    
+    def destroy(self) -> None:
+        """Destroy the component."""
+        # Clean up tree resources
+        self._tree_items.clear()
+        self._expanded_groups.clear()
