@@ -471,6 +471,35 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
             }}
         ''')
     
+    def set_layout(self, layout_name: str) -> None:
+        """Set the layout algorithm for the graph."""
+        container_id = self._container_id
+        self._current_layout = layout_name
+        
+        # Map layout names to Cytoscape.js layouts
+        layout_map = {
+            'force': 'cose',
+            'circular': 'circle', 
+            'grid': 'grid',
+            'hierarchical': 'dagre',
+            'random': 'random',
+            'preset': 'preset'
+        }
+        
+        cytoscape_layout = layout_map.get(layout_name, 'cose')
+        
+        ui.run_javascript(f'''
+            const cy = window.cy_{container_id};
+            if (cy) {{
+                const layout = cy.layout({{
+                    name: '{cytoscape_layout}',
+                    animate: true,
+                    animationDuration: 500
+                }});
+                layout.run();
+            }}
+        ''')
+    
     def on_node_click(self, callback: Callable[[str, INodeModel], None]) -> None:
         """Register callback for node click events."""
         self._callbacks['node_click'].append(callback)

@@ -268,12 +268,19 @@ class CLIAdapter:
         errors = []
         
         # Use CLI business logic validation
-        validation_errors = validate_business_logic(cli_nodes, cli_peers)
-        errors.extend(validation_errors)
+        business_valid = validate_business_logic(cli_nodes, cli_peers)
+        if not business_valid:
+            errors.append("Business logic validation failed")
         
-        # Use CLI connectivity validation
-        connectivity_errors = validate_node_connectivity(cli_nodes, cli_peers)
-        errors.extend(connectivity_errors)
+        # Use CLI connectivity validation  
+        connectivity_result = validate_node_connectivity(cli_nodes, cli_peers)
+        if isinstance(connectivity_result, dict):
+            # Extract any error messages from connectivity analysis
+            if 'errors' in connectivity_result:
+                if isinstance(connectivity_result['errors'], list):
+                    errors.extend(connectivity_result['errors'])
+                elif connectivity_result['errors']:
+                    errors.append(str(connectivity_result['errors']))
         
         return errors
     

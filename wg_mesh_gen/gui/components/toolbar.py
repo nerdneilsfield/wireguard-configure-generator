@@ -42,7 +42,7 @@ class ToolBar(BaseComponent, IToolBar):
     
     def render(self) -> ui.element:
         """Render the toolbar."""
-        with ui.row().classes('bg-primary p-2 gap-2') as self._element:
+        with ui.row().classes('bg-blue-600 p-2 gap-2 shadow-md w-full') as self._element:
             # File actions
             with ui.button_group().props('flat'):
                 self._add_action('new', 'New', 'add', self._handle_new)
@@ -87,7 +87,8 @@ class ToolBar(BaseComponent, IToolBar):
     def _add_action(self, action_id: str, tooltip: str, icon: str, handler: Callable) -> ui.button:
         """Add an action button to the toolbar."""
         btn = ui.button(icon=icon, on_click=handler)\
-            .props('flat round')\
+            .props('flat round dense outline color=white')\
+            .classes('text-white hover:bg-blue-700 hover:text-white border border-white/30')\
             .tooltip(tooltip)
         
         self._actions[action_id] = handler
