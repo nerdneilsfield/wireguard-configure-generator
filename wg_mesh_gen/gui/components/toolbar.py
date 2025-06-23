@@ -179,7 +179,7 @@ class ToolBar(BaseComponent, IToolBar):
             ui.label('Add New Node').classes('text-h6')
             
             name_input = ui.input('Name', placeholder='node1').classes('w-full')
-            role_select = ui.select('Role', options=['client', 'relay'], value='client').classes('w-full')
+            role_select = ui.select(options=['client', 'relay'], value='client', label='Role').classes('w-full')
             ip_input = ui.input('WireGuard IP', placeholder='10.0.0.1/24').classes('w-full')
             
             endpoint_container = ui.column().classes('w-full')
@@ -244,8 +244,8 @@ class ToolBar(BaseComponent, IToolBar):
             
             node_options = {node.id: node.name for node in self._app_state.nodes.values()}
             
-            source_select = ui.select('From Node', options=node_options).classes('w-full')
-            target_select = ui.select('To Node', options=node_options).classes('w-full')
+            source_select = ui.select(options=node_options, label='From Node').classes('w-full')
+            target_select = ui.select(options=node_options, label='To Node').classes('w-full')
             
             ui.label('Allowed IPs').classes('text-subtitle2 mt-2')
             allowed_ips = []
@@ -315,9 +315,9 @@ class ToolBar(BaseComponent, IToolBar):
             
             name_input = ui.input('Name', placeholder='group1').classes('w-full')
             topology_select = ui.select(
-                'Topology', 
                 options=['mesh', 'star', 'chain', 'single'],
-                value='mesh'
+                value='mesh',
+                label='Topology'
             ).classes('w-full')
             color_input = ui.color_input('Color', value='#0080FF').classes('w-full')
             
