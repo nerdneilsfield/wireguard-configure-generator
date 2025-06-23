@@ -39,14 +39,15 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
             component_id: Optional component ID
             **kwargs: Additional widget options
         """
+        # Initialize logger first
+        self._logger = get_logger()
+        
         # Generate unique container ID first (before anything else)
         self._container_id = f'cy-{uuid.uuid4().hex[:8]}'
         
         # Initialize parent classes
         BaseComponent.__init__(self, component_id)
         ValueElement.__init__(self, tag='div', value=None, **kwargs)
-        
-        self._logger = get_logger()
         self._state = state
         self._selected_elements: List[str] = []
         self._callbacks: Dict[str, List[Callable]] = {
@@ -142,6 +143,23 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
             # Fallback if props doesn't work
             pass
         
+        # Load Cytoscape.js library if not already loaded
+        ui.run_javascript('''
+            if (!window.cytoscape) {
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/cytoscape@3.23.0/dist/cytoscape.min.js';
+                document.head.appendChild(script);
+                console.log('Loading Cytoscape.js library...');
+            } else {
+                console.log('Cytoscape.js already loaded');
+            }
+        ''')
+        
+        # Wait a moment for the library to load, then initialize
+        ui.timer(1.0, self._create_cytoscape_instance, once=True)
+    
+    def _create_cytoscape_instance(self) -> None:
+        """Create the actual Cytoscape instance after library is loaded."""
         # Initialize Cytoscape with configuration
         config = {
             'container': f'#{self._container_id}',
@@ -156,12 +174,22 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
         # Add JavaScript initialization
         ui.run_javascript(f'''
             (function() {{
+                // Check if Cytoscape.js is loaded
+                if (!window.cytoscape) {{
+                    console.error('Cytoscape.js library not loaded');
+                    return;
+                }}
+                
                 // Wait for container to be ready
                 const container = document.getElementById('{self._container_id}');
                 if (!container) {{
+                    console.log('Container not ready, retrying...');
                     setTimeout(arguments.callee, 100);
                     return;
                 }}
+                
+                console.log('Initializing Cytoscape instance for container:', '{self._container_id}');
+                console.log('Config:', {json.dumps(config)});
                 
                 // Initialize Cytoscape
                 const cy = cytoscape({json.dumps(config)});
@@ -325,16 +353,31 @@ class CytoscapeWidget(BaseComponent, ICytoscapeWidget, ValueElement):
         container_id = self._container_id
         elements = self._get_elements_data()
         
+        # Debug logging
+        self._logger.info(f"Refreshing Cytoscape with {len(elements.get('nodes', []))} nodes and {len(elements.get('edges', []))} edges")
+        if elements.get('nodes'):
+            self._logger.info(f"First node: {elements['nodes'][0]}")
+        
         ui.run_javascript(f'''
+            console.log('Cytoscape refresh called for container:', '{container_id}');
+            console.log('Elements data:', {json.dumps(elements)});
+            
             const cy = window.cy_{container_id};
             if (cy) {{
+                console.log('Cytoscape instance found, updating elements');
                 // Update elements
                 cy.json({{ elements: {json.dumps(elements)} }});
                 
+                console.log('Elements updated, node count:', cy.nodes().length);
+                console.log('Elements updated, edge count:', cy.edges().length);
+                
                 // Reapply layout if needed
-                if (cy.nodes().length > 0 && !cy.nodes()[0].position()) {{
-                    cy.layout({{ name: 'cose' }}).run();
+                if (cy.nodes().length > 0) {{
+                    console.log('Applying layout');
+                    cy.layout({{ name: 'cose', animate: true }}).run();
                 }}
+            }} else {{
+                console.error('Cytoscape instance not found for container:', '{container_id}');
             }}
         ''')
     
