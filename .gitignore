@@ -44,3 +44,5 @@ wg_keys.json
 *.conf
 gui_test.log
 final_gui_test.log
+
+.claude/
