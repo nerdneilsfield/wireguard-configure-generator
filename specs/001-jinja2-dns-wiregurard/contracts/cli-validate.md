@@ -19,6 +19,7 @@ wg-mesh-gen validate [OPTIONS]
 | Option | Short | Type | Required | Default | Description |
 |--------|-------|------|----------|---------|-------------|
 | `--config` | `-c` | Path | Yes | - | Path to TOML configuration file to validate |
+| `--keys` | `-k` | Path | No | None | Path to key storage file (validates key-config compatibility) |
 | `--strict` | `-s` | Flag | No | False | Enable strict mode (warnings treated as errors) |
 
 ---
@@ -29,13 +30,18 @@ wg-mesh-gen validate [OPTIONS]
 - **Format**: TOML syntax (may be invalid)
 - **Location**: File must exist and be readable
 
+### Key Storage File (JSON, optional)
+- **Format**: Valid JSON syntax (if provided)
+- **Schema**: Must have `server{}` and `clients{name:{}}` structure
+- **Behavior**: If provided via `-k`, validates that keys exist for all nodes in config
+
 ---
 
 ## Output Contract
 
 ### Success (Exit Code 0)
 
-**stdout**:
+**stdout** (without `--keys`):
 ```
 ✅ TOML syntax: Valid
 ✅ Schema validation: Passed
@@ -43,18 +49,50 @@ wg-mesh-gen validate [OPTIONS]
 
 Configuration summary:
   Network: my-vpn (10.0.0.0/24)
-  Topology: mesh
-  Nodes: 3
+  Topology: star (1 server + 2 clients)
+  Server: vpn-server
+  Clients: 2 (laptop, phone)
 
 Validation checks:
-  ✓ No duplicate node names
+  ✓ No duplicate client names
   ✓ No duplicate IP addresses
   ✓ All IPs within subnet
   ✓ Port ranges valid (1024-65535)
   ✓ DNS nameservers are valid IPv4
-  ✓ Topology constraints satisfied
+  ✓ gen_global/gen_local constraints satisfied
 
 ✅ Configuration is valid and ready for generation
+```
+
+**stdout** (with `--keys`):
+```
+✅ TOML syntax: Valid
+✅ Schema validation: Passed
+✅ Business logic validation: Passed
+✅ Key storage validation: Passed
+
+Configuration summary:
+  Network: my-vpn (10.0.0.0/24)
+  Topology: star (1 server + 2 clients)
+  Server: vpn-server
+  Clients: 2 (laptop, phone)
+
+Validation checks:
+  ✓ No duplicate client names
+  ✓ No duplicate IP addresses
+  ✓ All IPs within subnet
+  ✓ Port ranges valid (1024-65535)
+  ✓ DNS nameservers are valid IPv4
+  ✓ gen_global/gen_local constraints satisfied
+
+Key storage checks:
+  ✓ keys.json exists and is readable
+  ✓ Server 'vpn-server' has keys (private_key, public_key, preshared_key)
+  ✓ Client 'laptop' has keys
+  ✓ Client 'phone' has keys
+  ✓ All keys are valid base64 (44 characters)
+
+✅ Configuration and keys are valid and ready for generation
 ```
 
 ---
@@ -149,18 +187,57 @@ or
 ❌ Error: Configuration file is not readable: Permission denied
 ```
 
+or (when `--keys` provided):
+
+```
+❌ Error: Key storage file not found: /path/to/keys.json
+```
+
+---
+
+### Key Storage Validation Errors (Exit Code 1)
+
+**stderr** (when `--keys` provided):
+```
+❌ Key storage validation failed: keys.json
+
+Errors:
+  - Server 'vpn-server': Missing keys (expected: private_key, public_key, preshared_key)
+  - Client 'laptop': Missing private_key
+  - Client 'phone': Not found in key storage (expected clients.phone)
+  - Client 'tablet': Invalid public_key format (expected 44-char base64, got 32)
+
+Total errors: 4
+
+Fix: Regenerate keys using --refresh-force or add missing keys manually
+```
+
 ---
 
 ## Examples
 
-### Basic Validation
+### Basic Validation (Config Only)
 ```bash
 wg-mesh-gen validate -c network.toml
 ```
 
 **Expected**:
-- Performs all validation checks
+- Validates TOML syntax, schema, and business logic
 - Reports summary with ✅ or ❌ status
+- Does NOT check key storage
+
+---
+
+### Full Validation (Config + Keys)
+```bash
+wg-mesh-gen validate -c network.toml -k keys.json
+```
+
+**Expected**:
+- Validates TOML configuration
+- Validates key storage file exists
+- Validates all nodes in config have corresponding keys
+- Validates key format (base64, correct length)
 
 ---
 
@@ -190,8 +267,15 @@ wg-mesh-gen validate -c network.toml --strict
 ### Layer 3: Business Logic Validation
 - Unique constraints (node names, IPs)
 - Cross-field validation (IP within subnet)
-- Topology-specific rules
+- Topology-specific rules (star: 1 server + N clients)
 - DNS configuration validity
+
+### Layer 4: Key Storage Validation (if `--keys` provided)
+- Key file exists and is valid JSON
+- Server has complete keyset (private_key, public_key, preshared_key)
+- All clients in config have keys in storage
+- All keys are valid base64 format (44 characters)
+- No extra keys for non-existent nodes (warning)
 
 ---
 
@@ -219,6 +303,14 @@ wg-mesh-gen validate -c network.toml --strict
 ### DNS (per client, optional)
 - ✅ `dns1` (if present) is valid IPv4 address
 - ✅ `dns2` (if present) is valid IPv4 address
+
+### Key Storage (if `--keys` provided)
+- ✅ Key file exists and is readable
+- ✅ Key file is valid JSON
+- ✅ Server has all required keys (private_key, public_key, preshared_key)
+- ✅ Each client in config has keys in storage
+- ✅ All keys are valid base64 (44 characters, 32 bytes)
+- ⚠️ Warning if extra keys found (nodes in keys.json not in config.toml)
 
 ---
 
@@ -259,25 +351,37 @@ Tests MUST verify:
 2. ✅ TOML syntax errors return exit code 1 with line number
 3. ✅ Schema validation errors list all violations
 4. ✅ Business logic errors include line numbers
-5. ✅ Duplicate node names detected
+5. ✅ Duplicate client names detected
 6. ✅ Duplicate IPs detected
 7. ✅ IP outside subnet detected
 8. ✅ Invalid port ranges detected
 9. ✅ Invalid DNS nameservers detected
 10. ✅ Warnings don't fail in normal mode
 11. ✅ Warnings fail in strict mode (--strict)
-12. ✅ Missing file returns descriptive error
+12. ✅ Missing config file returns descriptive error
+13. ✅ `-k` option validates key storage file
+14. ✅ Missing keys for nodes detected
+15. ✅ Invalid key format detected (not 44-char base64)
+16. ✅ Extra keys in storage show warning
+17. ✅ Missing key file returns descriptive error
 
 ---
 
 ## Use Cases
 
-### Pre-Generation Check
+### Pre-Generation Check (Config Only)
 ```bash
-wg-mesh-gen validate -c network.toml && wg-mesh-gen generate -c network.toml
+wg-mesh-gen validate -c network.toml && wg-mesh-gen generate -c network.toml -k keys.json
 ```
 
-**Purpose**: Validate before generating to catch errors early
+**Purpose**: Validate TOML before generating (keys created during generate)
+
+### Pre-Generation Check (Config + Keys)
+```bash
+wg-mesh-gen validate -c network.toml -k keys.json && wg-mesh-gen generate -c network.toml -k keys.json
+```
+
+**Purpose**: Validate both TOML and existing keys before regenerating configs
 
 ### CI/CD Integration
 ```bash

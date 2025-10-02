@@ -355,13 +355,19 @@ uv run pytest -k "client"              # Tests matching "client"
 
 ```bash
 # Generate configs from TOML
-wg-mesh-gen generate -c network.toml -o /etc/wireguard
+wg-mesh-gen generate -c network.toml -o /etc/wireguard -k keys.json
 
-# Validate TOML config
+# Generate with fresh keys (ignore existing keys.json)
+wg-mesh-gen generate -c network.toml -o /etc/wireguard -k keys.json --refresh-force
+
+# Validate TOML config only
 wg-mesh-gen validate -c network.toml
 
-# Migrate JSON to TOML
-wg-mesh-gen migrate -i config.json -o network.toml
+# Validate TOML config + key storage
+wg-mesh-gen validate -c network.toml -k keys.json
+
+# Migrate JSON to TOML (extract embedded keys)
+wg-mesh-gen migrate -i config.json -o network.toml -k keys.json
 ```
 
 ### Click Implementation Pattern
@@ -379,8 +385,10 @@ def main():
 @main.command()
 @click.option("-c", "--config", type=click.Path(exists=True), required=True)
 @click.option("-o", "--output", type=click.Path(), default=".")
+@click.option("-k", "--keys", type=click.Path(), default="./keys.json")
 @click.option("--parallel", is_flag=True, help="Enable parallel generation")
-def generate(config, output, parallel):
+@click.option("--refresh-force", is_flag=True, help="Regenerate all keys (ignore existing)")
+def generate(config, output, keys, parallel, refresh_force):
     """Generate WireGuard configurations."""
     # Implementation
     pass
@@ -465,22 +473,23 @@ gen_global = true
 gen_local = true
 EOF
 
-# 2. Generate
-uv run wg-mesh-gen generate -c network.toml -o output/
+# 2. Generate (will create keys.json automatically)
+uv run wg-mesh-gen generate -c network.toml -o output/ -k keys.json
 
 # 3. Verify
 ls -l output/
 cat output/wg-test-server-srv.conf
 cat output/wg-test-client-laptop-global.conf
+cat keys.json  # Check generated keys
 ```
 
 ### Task 2: Migrate Legacy JSON to TOML
 
 ```bash
 # Convert config.json to network.toml + keys.json
-uv run wg-mesh-gen migrate -i config.json -o network.toml
+uv run wg-mesh-gen migrate -i config.json -o network.toml -k keys.json
 
-# Result: network.toml (config) + keys.json (keys extracted)
+# Result: network.toml (config) + keys.json (extracted keys)
 ```
 
 ---

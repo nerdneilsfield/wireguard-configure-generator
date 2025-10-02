@@ -20,8 +20,9 @@ wg-mesh-gen migrate [OPTIONS]
 |--------|-------|------|----------|---------|-------------|
 | `--input` | `-i` | Path | Yes | - | Path to legacy JSON configuration file |
 | `--output` | `-o` | Path | No | `network.toml` | Output path for TOML configuration file |
+| `--keys` | `-k` | Path | No | `keys.json` | Output path for extracted key storage file |
 | `--validate` | `-v` | Flag | No | True | Validate output TOML before writing |
-| `--force` | `-f` | Flag | No | False | Overwrite existing output file |
+| `--force` | `-f` | Flag | No | False | Overwrite existing output files (TOML and keys) |
 
 ---
 
@@ -75,16 +76,17 @@ wg-mesh-gen migrate [OPTIONS]
 **stdout**:
 ```
 ✅ Loaded legacy JSON configuration: /path/to/config.json
-✅ Extracted embedded keys to separate keys.json file
+✅ Extracted embedded keys from server and 2 clients
 ✅ Converted server + 2 clients from JSON to TOML format
 ✅ Validated output TOML configuration
 ✅ Wrote TOML configuration: network.toml
-✅ Wrote key storage: keys.json
+✅ Wrote key storage: keys.json (permissions: 0600)
 
 Migration Summary:
   Server: 1
   Clients: 2
   Keys extracted: 3 (server + 2 clients)
+  Output files: network.toml, keys.json
   Warnings: 0
 ```
 
@@ -190,7 +192,7 @@ or
 
 **stderr**:
 ```
-❌ Error: Output file already exists: network.toml
+❌ Error: Output files already exist: network.toml, keys.json
 Use --force to overwrite
 ```
 
@@ -198,6 +200,13 @@ or
 
 ```
 ❌ Error: Output directory /path/to is not writable
+```
+
+or
+
+```
+❌ Error: Key storage file keys.json already exists
+Use --force to overwrite
 ```
 
 ---
@@ -264,14 +273,15 @@ Migration aborted. Fix source JSON and retry.
 
 ### Basic Migration
 ```bash
-wg-mesh-gen migrate -i config.json -o network.toml
+wg-mesh-gen migrate -i config.json -o network.toml -k keys.json
 ```
 
 **Expected**:
-- Reads `config.json`
-- Converts to TOML format
-- Validates output
-- Writes `network.toml`
+- Reads `config.json` (with embedded keys)
+- Extracts keys to `keys.json` (separate file)
+- Converts configuration to TOML format
+- Validates output TOML
+- Writes `network.toml` and `keys.json`
 
 ---
 
@@ -288,11 +298,11 @@ wg-mesh-gen migrate -i config.json --no-validate
 
 ### Force Overwrite
 ```bash
-wg-mesh-gen migrate -i config.json -o network.toml --force
+wg-mesh-gen migrate -i config.json -o network.toml -k keys.json --force
 ```
 
 **Expected**:
-- Overwrites existing `network.toml` without prompting
+- Overwrites existing `network.toml` and `keys.json` without prompting
 
 ---
 
@@ -334,16 +344,18 @@ wg-mesh-gen migrate -i config.json -o network.toml --force
 ## Contract Test Requirements
 
 Tests MUST verify:
-1. ✅ Valid JSON input generates valid TOML output
+1. ✅ Valid JSON input generates valid TOML output and keys.json
 2. ✅ All JSON fields correctly mapped to TOML equivalents
-3. ✅ Invalid JSON syntax returns exit code 1 with error message
-4. ✅ Missing required JSON fields return descriptive error
-5. ✅ Output TOML passes validation (when --validate is True)
-6. ✅ Validation errors prevent file write
-7. ✅ --force flag overwrites existing output file
-8. ✅ Without --force, existing output file causes error
-9. ✅ Warnings logged for renamed fields
-10. ✅ Original JSON file never modified
+3. ✅ Embedded keys extracted to separate keys.json file
+4. ✅ `-k` option specifies custom key storage path
+5. ✅ Invalid JSON syntax returns exit code 1 with error message
+6. ✅ Missing required JSON fields return descriptive error
+7. ✅ Output TOML passes validation (when --validate is True)
+8. ✅ Validation errors prevent file write
+9. ✅ --force flag overwrites existing output files (TOML + keys.json)
+10. ✅ Without --force, existing output files cause error
+11. ✅ keys.json has 0600 permissions
+12. ✅ Original JSON file never modified
 
 ---
 

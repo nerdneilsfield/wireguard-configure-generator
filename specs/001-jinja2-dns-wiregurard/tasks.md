@@ -72,21 +72,30 @@
   - Test valid TOML input generates server + client configs
   - Test validation errors return exit code 1
   - Test --parallel flag works
-  - Test --force flag overwrites existing files
-  - Test key reuse on regeneration
+  - Test --force flag overwrites existing config files
+  - Test -k/--keys flag specifies custom key storage path
+  - Test key reuse on regeneration (existing keys preserved)
+  - Test --refresh-force regenerates all keys (ignores existing keys.json)
+  - Test missing keys.json is created automatically
 
 - [ ] **T007** [P] Contract test for `wg-mesh-gen validate` command in tests/contract/test_cli_validate.py
   - Test valid TOML returns exit code 0
   - Test syntax errors return exit code 1
   - Test schema validation errors
   - Test business logic validation (unique names/IPs, gen_global/gen_local)
+  - Test -k/--keys flag validates key storage
+  - Test missing keys for nodes detected
+  - Test invalid key format detected (not 44-char base64)
+  - Test extra keys in storage show warning
   - Test --strict flag treats warnings as errors
 
 - [ ] **T008** [P] Contract test for `wg-mesh-gen migrate` command in tests/contract/test_cli_migrate.py
   - Test JSON to TOML conversion
   - Test embedded key extraction to keys.json
+  - Test -k/--keys flag specifies custom key storage path
   - Test validation of migrated config
-  - Test --force flag overwrites existing TOML
+  - Test --force flag overwrites existing TOML and keys.json
+  - Test keys.json has 0600 permissions
 
 ### Unit Tests (Modules)
 
@@ -270,18 +279,24 @@
     @click.option("-k", "--keys", type=click.Path(), default="./keys.json")
     @click.option("--parallel", is_flag=True, default=False)
     @click.option("-f", "--force", is_flag=True, default=False)
-    def generate(config, output, keys, parallel, force):
+    @click.option("--refresh-force", is_flag=True, default=False)
+    def generate(config, output, keys, parallel, force, refresh_force):
     ```
   - **Implementation flow**:
     1. Load TOML: `config_dict = loader.load_toml(Path(config))`
     2. Validate: `validator.validate_toml_config(config_dict)`
     3. Parse models: `network = NetworkConfig.from_dict(config_dict)`
-    4. Load/generate keys: `key_manager.load_keys_from_json()` or `key_manager.generate_private_key()`
-    5. Render configs: `renderer.render_server_config()`, `renderer.render_client_config()`
-    6. Write files: Loop through clients, handle gen_global/gen_local flags
-    7. Set permissions: `os.chmod(file, 0o600)` for each .conf file
+    4. Load/generate keys:
+       - If `--refresh-force`: Generate all new keys (ignore existing keys.json)
+       - Else if keys.json exists: Load existing keys, generate only for new nodes
+       - Else: Generate all new keys
+    5. Save keys: `key_manager.save_keys_to_json(keys, Path(keys))` with 0600 permissions
+    6. Render configs: `renderer.render_server_config()`, `renderer.render_client_config()`
+    7. Write files: Loop through clients, handle gen_global/gen_local flags
+    8. Set permissions: `os.chmod(file, 0o600)` for each .conf file
   - **Parallel mode**: Use `concurrent.futures.ThreadPoolExecutor` (see research.md lines 252-274)
   - **File naming**: See wg_conf_gen.py lines 110-112, 156-173 for exact format
+  - **Key management**: Track reused vs generated keys for summary output
 
 - [ ] **T029** Implement `validate` command in src/wg_mesh_gen/cli.py
   - **Reference**: contracts/cli-validate.md for output format
@@ -289,19 +304,28 @@
     ```python
     @main.command()
     @click.option("-c", "--config", type=click.Path(exists=True), required=True)
+    @click.option("-k", "--keys", type=click.Path(), default=None)
     @click.option("-s", "--strict", is_flag=True, default=False)
-    def validate(config, strict):
+    def validate(config, keys, strict):
     ```
   - **Implementation**:
     1. Try to load TOML: Catch tomllib.TOMLDecodeError for syntax errors
     2. Validate schema: Catch jsonschema.ValidationError
     3. Validate business logic: Catch ValueError for custom rules
-    4. Display summary: Use click.echo() for each check with ✅/❌
-  - **Output format** (see contracts/cli-validate.md lines 38-57):
+    4. If --keys provided:
+       - Load keys.json: Catch FileNotFoundError, json.JSONDecodeError
+       - Validate server has keys (private_key, public_key, preshared_key)
+       - Validate each client in config has keys in storage
+       - Validate key format (44-char base64)
+       - Warn if extra keys found (nodes in keys.json not in config)
+    5. Display summary: Use click.echo() for each check with ✅/❌
+  - **Output format** (see contracts/cli-validate.md lines 38-76):
     - "✅ TOML syntax: Valid"
     - "✅ Schema validation: Passed"
     - "✅ Business logic validation: Passed"
-    - Configuration summary with network name, node count
+    - "✅ Key storage validation: Passed" (if --keys provided)
+    - Configuration summary with network name, server, client count
+    - Key storage checks (if --keys provided)
   - **Exit codes**: 0 for valid, 1 for errors, 0 or 1 for warnings (based on --strict)
 
 - [ ] **T030** Implement `migrate` command in src/wg_mesh_gen/cli.py
@@ -311,17 +335,19 @@
     @main.command()
     @click.option("-i", "--input", type=click.Path(exists=True), required=True)
     @click.option("-o", "--output", type=click.Path(), default="network.toml")
+    @click.option("-k", "--keys", type=click.Path(), default="keys.json")
     @click.option("-v", "--validate", is_flag=True, default=True)
     @click.option("-f", "--force", is_flag=True, default=False)
-    def migrate(input, output, validate, force):
+    def migrate(input, output, keys, validate, force):
     ```
   - **Implementation**:
     1. Load JSON: `json.load(open(input))`
-    2. Extract keys: `keys = migrator.extract_keys_from_json(json_config)`
+    2. Extract keys: `extracted_keys = migrator.extract_keys_from_json(json_config)`
     3. Migrate TOML: `toml_config = migrator.migrate_json_to_toml(json_config)`
     4. Validate (if flag): `validator.validate_toml_config(toml_config)`
-    5. Write TOML: `loader.write_toml(toml_config, output)`
-    6. Write keys: `key_manager.save_keys_to_json(keys, "keys.json")`
+    5. Check existing files (if not --force): Error if output or keys file exists
+    6. Write TOML: `loader.write_toml(toml_config, output)`
+    7. Write keys: `key_manager.save_keys_to_json(extracted_keys, Path(keys))` with 0600 permissions
   - **Output**: See contracts/cli-migrate.md lines 75-89 for exact message format
 
 ---
