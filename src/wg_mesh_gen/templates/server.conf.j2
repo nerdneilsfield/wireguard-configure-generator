@@ -1,0 +1,15 @@
+[Interface]
+Address = {{ server.vlan_ipv4_addr }}/24
+ListenPort = {{ server.port }}
+PrivateKey = {{ server.private_key }}
+PostUp = iptables -A FORWARD -i {{ server.interface }} -o {{ network_name }} -j ACCEPT; iptables -A FORWARD -i {{ network_name }} -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ server.interface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i {{ server.interface }} -o {{ network_name }} -j ACCEPT; iptables -D FORWARD -i {{ network_name }} -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ server.interface }} -j MASQUERADE
+
+{% for client in clients %}
+### Client {{ client.name }}
+[Peer]
+PublicKey = {{ client.public_key }}
+PresharedKey = {{ client.preshared_key }}
+AllowedIPs = {{ client.vlan_ipv4_addr }}/32
+
+{% endfor %}

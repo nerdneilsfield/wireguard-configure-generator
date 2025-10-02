@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "server": {
+    "private_key": "QLWvo+D+w3P8HHAJh0fA4zlPWfhJCT7GJBMW9FE7TFw=",
+    "public_key": "old-server-pub-key-base64=",
+    "preshared_key": "old-server-psk-base64="
+  },
+  "clients": {
+    "client1": {
+      "private_key": "client1-prv-key-base64=",
+      "public_key": "client1-pub-key-base64=",
+      "preshared_key": "client1-psk-base64="
+    }
+  }
+}

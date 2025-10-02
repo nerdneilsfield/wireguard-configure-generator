@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "server": {
+    "private_key": "cG9ydHMyNWNyeXB0b2dyYXBoeQ==",
+    "public_key": "c2VydmVycHVibGlja2V5",
+    "preshared_key": "cHJlc2hhcmVka2V5"
+  },
+  "clients": {
+    "laptop": {
+      "private_key": "bGFwdG9wcHJpdmF0ZWtleQ==",
+      "public_key": "bGFwdG9wcHVibGlja2V5",
+      "preshared_key": "bGFwdG9wcHNr"
+    },
+    "phone": {
+      "private_key": "cGhvbmVwcml2YXRla2V5",
+      "public_key": "cGhvbmVwdWJsaWNrZXk=",
+      "preshared_key": "cGhvbmVwc2s="
+    }
+  }
+}

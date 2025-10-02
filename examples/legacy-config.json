@@ -1,0 +1,29 @@
+{
+  "common": {
+    "network_name": "legacy-vpn",
+    "network_ipv4_addr": "192.168.100.0/24"
+  },
+  "server": {
+    "name": "old-server",
+    "ipv4_addr": "vpn.legacy.com",
+    "vlan_ipv4_addr": "192.168.100.1",
+    "port": 51820,
+    "interface": "ens5",
+    "prvkey": "QLWvo+D+w3P8HHAJh0fA4zlPWfhJCT7GJBMW9FE7TFw=",
+    "pubkey": "old-server-pub-key-base64=",
+    "psk": "old-server-psk-base64="
+  },
+  "clients": [
+    {
+      "name": "client1",
+      "vlan_ipv4_addr": "192.168.100.2",
+      "port": 51821,
+      "dns1": "9.9.9.9",
+      "gen_global": true,
+      "gen_local": false,
+      "prvkey": "client1-prv-key-base64=",
+      "pubkey": "client1-pub-key-base64=",
+      "psk": "client1-psk-base64="
+    }
+  ]
+}

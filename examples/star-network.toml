@@ -1,0 +1,26 @@
+[common]
+network_name = "my-vpn"
+network_ipv4_addr = "10.0.0.0/24"
+
+[server]
+name = "vpn-server"
+endpoint = "vpn.example.com"
+vlan_ipv4_addr = "10.0.0.1"
+port = 51820
+interface = "eth0"
+
+[[clients]]
+name = "laptop"
+vlan_ipv4_addr = "10.0.0.2"
+port = 51821
+dns1 = "1.1.1.1"
+dns2 = "8.8.8.8"
+gen_global = true
+gen_local = false
+
+[[clients]]
+name = "phone"
+vlan_ipv4_addr = "10.0.0.3"
+port = 51822
+gen_global = false
+gen_local = true

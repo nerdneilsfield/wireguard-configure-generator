@@ -1,0 +1,18 @@
+[common]
+network_name = "legacy-vpn"
+network_ipv4_addr = "192.168.100.0/24"
+
+[server]
+name = "old-server"
+vlan_ipv4_addr = "192.168.100.1"
+port = 51820
+interface = "ens5"
+endpoint = "vpn.legacy.com"
+
+[[clients]]
+name = "client1"
+vlan_ipv4_addr = "192.168.100.2"
+port = 51821
+dns1 = "9.9.9.9"
+gen_global = true
+gen_local = false

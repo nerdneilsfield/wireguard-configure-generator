@@ -1,7 +1,42 @@
 [project]
-name = "wireguard-configure-generator-older"
+name = "wg-mesh-gen"
 version = "0.1.0"
-description = "Add your description here"
+description = "WireGuard star topology configuration generator"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.1",           # CLI framework
+    "jinja2>=3.1.6",        # Template rendering
+    "tomli-w>=1.0",         # TOML writing
+    "jsonschema>=4.0",      # Configuration validation
+    "cryptography>=45.0.2", # Key generation (Curve25519)
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.1",
+]
+
+[project.scripts]
+wg-mesh-gen = "wg_mesh_gen.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "D"]
+ignore = ["E501"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=wg_mesh_gen --cov-report=term-missing"

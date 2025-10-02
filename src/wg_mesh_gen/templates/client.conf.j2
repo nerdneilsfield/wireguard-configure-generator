@@ -1,0 +1,16 @@
+[Interface]
+PrivateKey = {{ client.private_key }}
+Address = {{ client.vlan_ipv4_addr }}/32
+{% if client.dns1 and client.dns2 %}
+DNS = {{ client.dns1 }},{{ client.dns2 }}
+{% elif client.dns1 %}
+DNS = {{ client.dns1 }}
+{% endif %}
+
+# server {{ server.name }}
+[Peer]
+PublicKey = {{ server.public_key }}
+PresharedKey = {{ client.preshared_key }}
+Endpoint = {{ server.endpoint }}:{{ server.port }}
+AllowedIPs = {{ allowed_ips }}
+PersistentKeepalive = 25
